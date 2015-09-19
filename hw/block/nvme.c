@@ -1458,11 +1458,11 @@ static uint16_t nvme_get_feature_timestamp(NvmeCtrl *n, NvmeCmd *cmd,
 
 static uint16_t nvme_get_feature(NvmeCtrl *n, NvmeCmd *cmd, NvmeRequest *req)
 {
-    NvmeNamespace *ns = req->ns;
-
     uint32_t dw10 = le32_to_cpu(cmd->cdw10);
     uint32_t dw11 = le32_to_cpu(cmd->cdw11);
     uint32_t result;
+
+    uint32_t nsid;
 
     trace_nvme_getfeat(dw10);
 
@@ -1480,7 +1480,13 @@ static uint16_t nvme_get_feature(NvmeCtrl *n, NvmeCmd *cmd, NvmeRequest *req)
         result = cpu_to_le32(n->features.err_rec);
         break;
     case NVME_VOLATILE_WRITE_CACHE:
-        result = blk_enable_write_cache(ns->conf.blk);
+        nsid = le32_to_cpu(cmd->nsid);
+        if (unlikely(nsid == 0 || nsid > n->num_namespaces)) {
+            trace_nvme_err_invalid_ns(nsid, n->num_namespaces);
+            return NVME_INVALID_NSID | NVME_DNR;
+        }
+
+        result = blk_enable_write_cache(n->namespaces[nsid - 1]->conf.blk);
         trace_nvme_getfeat_vwcache(result ? "enabled" : "disabled");
         break;
     case NVME_NUMBER_OF_QUEUES:
@@ -1534,10 +1540,10 @@ static uint16_t nvme_set_feature_timestamp(NvmeCtrl *n, NvmeCmd *cmd,
 
 static uint16_t nvme_set_feature(NvmeCtrl *n, NvmeCmd *cmd, NvmeRequest *req)
 {
-    NvmeNamespace *ns = req->ns;
-
     uint32_t dw10 = le32_to_cpu(cmd->cdw10);
     uint32_t dw11 = le32_to_cpu(cmd->cdw11);
+
+    uint32_t nsid;
 
     trace_nvme_setfeat(dw10, dw11);
 
@@ -1550,7 +1556,13 @@ static uint16_t nvme_set_feature(NvmeCtrl *n, NvmeCmd *cmd, NvmeRequest *req)
         }
         break;
     case NVME_VOLATILE_WRITE_CACHE:
-        blk_set_enable_write_cache(ns->conf.blk, dw11 & 1);
+        nsid = le32_to_cpu(cmd->nsid);
+        if (unlikely(nsid == 0 || nsid > n->num_namespaces)) {
+            trace_nvme_err_invalid_ns(nsid, n->num_namespaces);
+            return NVME_INVALID_NSID | NVME_DNR;
+        }
+
+        blk_set_enable_write_cache(n->namespaces[nsid - 1]->conf.blk, dw11 & 1);
         break;
     case NVME_NUMBER_OF_QUEUES:
         if (n->qs_created > 2) {
