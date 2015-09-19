@@ -29,11 +29,13 @@
 #include "hw/pci-host/i440fx.h"
 #include "hw/qdev-properties.h"
 #include "hw/sysbus.h"
+#include "hw/xen/xen.h"
 #include "qapi/error.h"
 #include "migration/vmstate.h"
 #include "hw/pci-host/pam.h"
 #include "qapi/visitor.h"
 #include "qemu/error-report.h"
+#include "hw/display/vgt_vga.h"
 
 /*
  * I440FX chipset data sheet.
@@ -266,6 +268,10 @@ static void i440fx_realize(PCIDevice *dev, Error **errp)
 
     if (object_property_get_bool(qdev_get_machine(), "iommu", NULL)) {
         warn_report("i440fx doesn't support emulated iommu");
+    }
+
+    if (vgt_vga_enabled && xen_enabled()) {
+        vgt_bridge_pci_conf_init(dev);
     }
 }
 
