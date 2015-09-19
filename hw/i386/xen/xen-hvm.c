@@ -261,7 +261,7 @@ static void xen_ram_init(PCMachineState *pcms,
     }
 }
 
-void xen_ram_alloc(ram_addr_t ram_addr, ram_addr_t size, MemoryRegion *mr,
+ram_addr_t xen_ram_alloc(ram_addr_t ram_addr, ram_addr_t size, MemoryRegion *mr,
                    Error **errp)
 {
     unsigned long nr_pfn;
@@ -273,12 +273,14 @@ void xen_ram_alloc(ram_addr_t ram_addr, ram_addr_t size, MemoryRegion *mr,
         fprintf(stderr, "%s: do not alloc "RAM_ADDR_FMT
                 " bytes of ram at "RAM_ADDR_FMT" when runstate is INMIGRATE\n",
                 __func__, size, ram_addr);
-        return;
+        return ram_addr;
     }
 
     if (mr == &ram_memory) {
-        return;
+        return ram_addr;
     }
+
+    ram_addr = VRAM_RESERVED_ADDRESS;
 
     trace_xen_ram_alloc(ram_addr, size);
 
@@ -295,6 +297,7 @@ void xen_ram_alloc(ram_addr_t ram_addr, ram_addr_t size, MemoryRegion *mr,
     }
 
     g_free(pfn_list);
+    return ram_addr;
 }
 
 static XenPhysmap *get_physmapping(hwaddr start_addr, ram_addr_t size)
