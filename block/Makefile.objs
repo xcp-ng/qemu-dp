@@ -1,10 +1,12 @@
-block-obj-y += raw-format.o qcow.o vdi.o vmdk.o cloop.o bochs.o vpc.o vvfat.o dmg.o
+block-obj-y += raw-format.o qcow.o vdi.o
+block-obj-$(call lnot,$(CONFIG_XEN)) += vmdk.o cloop.o bochs.o vpc.o vvfat.o dmg.o
 block-obj-y += qcow2.o qcow2-refcount.o qcow2-cluster.o qcow2-snapshot.o qcow2-cache.o qcow2-bitmap.o
 block-obj-y += qed.o qed-l2-cache.o qed-table.o qed-cluster.o
 block-obj-y += qed-check.o
-block-obj-y += vhdx.o vhdx-endian.o vhdx-log.o
+block-obj-$(call lnot,$(CONFIG_XEN)) += vhdx.o vhdx-endian.o vhdx-log.o
 block-obj-y += quorum.o
-block-obj-y += parallels.o blkdebug.o blkverify.o blkreplay.o
+block-obj-y += blkdebug.o blkverify.o blkreplay.o
+block-obj-$(call lnot,$(CONFIG_XEN)) += parallels.o
 block-obj-y += block-backend.o snapshot.o qapi.o
 block-obj-$(CONFIG_WIN32) += file-win32.o win32-aio.o
 block-obj-$(CONFIG_POSIX) += file-posix.o
@@ -12,7 +14,8 @@ block-obj-$(CONFIG_LINUX_AIO) += linux-aio.o
 block-obj-y += null.o mirror.o commit.o io.o
 block-obj-y += throttle-groups.o
 
-block-obj-y += nbd.o nbd-client.o sheepdog.o
+block-obj-$(call lnot,$(CONFIG_XEN)) += sheepdog.o
+block-obj-y += nbd.o nbd-client.o
 block-obj-$(CONFIG_LIBISCSI) += iscsi.o
 block-obj-$(if $(CONFIG_LIBISCSI),y,n) += iscsi-opts.o
 block-obj-$(CONFIG_LIBNFS) += nfs.o
