@@ -62,6 +62,7 @@ static Property pci_props[] = {
                     QEMU_PCI_CAP_MULTIFUNCTION_BITNR, false),
     DEFINE_PROP_UINT32("subvendor_id", PCIDevice, subvendor_id, 0),
     DEFINE_PROP_UINT32("subsystem_id", PCIDevice, subsystem_id, 0),
+    DEFINE_PROP_UINT32("revision_id", PCIDevice, revision_id, -1),
     DEFINE_PROP_BIT("command_serr_enable", PCIDevice, cap_present,
                     QEMU_PCI_CAP_SERR_BITNR, true),
     DEFINE_PROP_BIT("x-pcie-lnksta-dllla", PCIDevice, cap_present,
@@ -1017,7 +1018,11 @@ static PCIDevice *do_pci_register_device(PCIDevice *pci_dev, PCIBus *bus,
 
     pci_config_set_vendor_id(pci_dev->config, pc->vendor_id);
     pci_config_set_device_id(pci_dev->config, pc->device_id);
-    pci_config_set_revision(pci_dev->config, pc->revision);
+    if (pci_dev->revision_id > 0xff) {
+        pci_config_set_revision(pci_dev->config, pc->revision);
+    } else {
+        pci_config_set_revision(pci_dev->config, pci_dev->revision_id);
+    }
     pci_config_set_class(pci_dev->config, pc->class_id);
 
     if (!pc->is_bridge) {

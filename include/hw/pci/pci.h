@@ -349,6 +349,7 @@ struct PCIDevice {
 
     uint32_t subvendor_id;
     uint32_t subsystem_id;
+    uint32_t revision_id;
 };
 
 void pci_register_bar(PCIDevice *pci_dev, int region_num,
