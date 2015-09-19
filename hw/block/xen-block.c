@@ -661,6 +661,8 @@ static void xen_block_register_types(void)
 
 type_init(xen_block_register_types)
 
+/* disable the ability for QEMU to create qdisk backend from xenstore. */
+#if 0
 static void xen_block_blockdev_del(const char *node_name, Error **errp)
 {
     trace_xen_block_blockdev_del(node_name);
@@ -1028,3 +1030,4 @@ static void xen_block_register_backend(void)
 }
 
 xen_backend_init(xen_block_register_backend);
+#endif
