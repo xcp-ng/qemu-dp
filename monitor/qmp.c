@@ -344,7 +344,6 @@ static void monitor_qmp_event(void *opaque, int event)
 
     switch (event) {
     case CHR_EVENT_OPENED:
-        mon->commands = &qmp_cap_negotiation_commands;
         monitor_qmp_caps_reset(mon);
         data = qmp_greeting(mon);
         qmp_send_response(mon, data);
@@ -364,6 +363,7 @@ static void monitor_qmp_event(void *opaque, int event)
                                  mon, NULL);
         mon_refcount--;
         monitor_fdsets_cleanup();
+        mon->commands = &qmp_cap_negotiation_commands;
         break;
     }
 }
@@ -398,6 +398,7 @@ void monitor_init_qmp(Chardev *chr, bool pretty)
     monitor_data_init(&mon->common, true, false,
                       qemu_chr_has_feature(chr, QEMU_CHAR_FEATURE_GCONTEXT));
 
+    mon->commands = &qmp_cap_negotiation_commands;
     mon->pretty = pretty;
 
     qemu_mutex_init(&mon->qmp_queue_lock);
