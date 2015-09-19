@@ -306,7 +306,47 @@ static int xen_pt_irqpin_reg_init(XenPCIPassthroughState *s,
     return 0;
 }
 
+#define PCI_VENDOR_ID_ATI               0x1002
+
 /* Command register */
+static int xen_pt_command_reg_init(XenPCIPassthroughState *s,
+                                   XenPTRegInfo *reg, uint32_t real_offset,
+                                   uint32_t *data)
+{
+    const XenHostPCIDevice *d = &s->real_device;
+
+    *data = reg->init_val;
+
+    if ((d->vendor_id == PCI_VENDOR_ID_AMD ||
+         d->vendor_id == PCI_VENDOR_ID_ATI) &&
+        d->is_virtfn) {
+        *data |= 0x01;
+    }
+
+    return 0;
+}
+
+static int xen_pt_cmd_reg_read(XenPCIPassthroughState *s, XenPTReg *cfg_entry,
+                               uint16_t *value, uint16_t valid_mask)
+{
+    XenPTRegInfo *reg = cfg_entry->reg;
+    uint16_t valid_emu_mask = 0;
+    uint16_t *data = cfg_entry->ptr.half_word;
+    const XenHostPCIDevice *d = &s->real_device;
+
+    /* emulate word register */
+    valid_emu_mask = reg->emu_mask & valid_mask;
+    *value = XEN_PT_MERGE_VALUE(*value, *data, ~valid_emu_mask);
+
+    if ((d->vendor_id == PCI_VENDOR_ID_AMD ||
+         d->vendor_id == PCI_VENDOR_ID_ATI) &&
+        d->is_virtfn) {
+        *value |= 0x01;
+    }
+
+    return 0;
+}
+
 static int xen_pt_cmd_reg_write(XenPCIPassthroughState *s, XenPTReg *cfg_entry,
                                 uint16_t *val, uint16_t dev_value,
                                 uint16_t valid_mask)
@@ -616,8 +656,8 @@ static XenPTRegInfo xen_pt_emu_reg_header0[] = {
         .init_val   = 0x0000,
         .res_mask   = 0xF880,
         .emu_mask   = 0x0743,
-        .init       = xen_pt_common_reg_init,
-        .u.w.read   = xen_pt_word_reg_read,
+        .init       = xen_pt_command_reg_init,
+        .u.w.read   = xen_pt_cmd_reg_read,
         .u.w.write  = xen_pt_cmd_reg_write,
     },
     /* Capabilities Pointer reg */
