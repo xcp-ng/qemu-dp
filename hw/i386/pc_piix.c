@@ -228,6 +228,14 @@ static void pc_init1(MachineState *machine,
 
     pc_register_ferr_irq(pcms->gsi[13]);
 
+    /*
+     * Initialize XenGT hooks before normal VGA init.
+     * IGD should be initialized followed by a PCI stdvga card
+     * at 00:02.0 to provide legacy emulation.
+     */
+    if (vgt_vga_enabled && pcmc->pci_enabled) {
+        vgt_vga_init(pci_bus);
+    }
     pc_vga_init(isa_bus, pcmc->pci_enabled ? pci_bus : NULL);
 
     assert(pcms->vmport != ON_OFF_AUTO__MAX);
