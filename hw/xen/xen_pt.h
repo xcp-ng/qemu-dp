@@ -94,6 +94,7 @@ typedef struct XenPTRegion {
         uint64_t pio_base;
         uint64_t u;
     } access;
+    uint64_t size;
 } XenPTRegion;
 
 /* XenPTRegInfo declaration
@@ -192,6 +193,7 @@ typedef struct XenPTMSIXEntry {
     uint32_t latch[4];
     bool updated; /* indicate whether MSI ADDR or DATA is updated */
 } XenPTMSIXEntry;
+
 typedef struct XenPTMSIX {
     uint32_t ctrl_offset;
     bool enabled;
@@ -206,6 +208,18 @@ typedef struct XenPTMSIX {
     XenPTMSIXEntry msix_entry[0];
 } XenPTMSIX;
 
+typedef struct XenPTBAR {
+    struct XenPCIPassthroughState *s;
+    XenPTRegion region;
+    void (*map)(struct XenPTBAR *bar, MemoryRegionSection *sec);
+    void (*unmap)(struct XenPTBAR *bar, MemoryRegionSection *sec);
+    void (*read)(struct XenPTBAR *bar, hwaddr addr, unsigned int size,
+                 uint64_t *value);
+    void (*write)(struct XenPTBAR *bar, hwaddr addr, unsigned int size,
+                  uint64_t value);
+    MemoryRegion mr;
+} XenPTBAR;
+
 struct XenPCIPassthroughState {
     PCIDevice dev;
 
@@ -214,16 +228,13 @@ struct XenPCIPassthroughState {
     bool permissive;
     bool permissive_warned;
     XenHostPCIDevice real_device;
-    XenPTRegion bases[PCI_NUM_REGIONS]; /* Access regions */
     QLIST_HEAD(, XenPTRegGroup) reg_grps;
 
     uint32_t machine_irq;
 
     XenPTMSI *msi;
     XenPTMSIX *msix;
-
-    MemoryRegion bar[PCI_NUM_REGIONS - 1];
-    MemoryRegion rom;
+    XenPTBAR bar[PCI_NUM_REGIONS];
 
     MemoryListener memory_listener;
     MemoryListener io_listener;
@@ -328,8 +339,8 @@ static inline bool is_igd_vga_passthrough(XenHostPCIDevice *dev)
     return (has_igd_gfx_passthru
             && ((dev->class_code >> 0x8) == PCI_CLASS_DISPLAY_VGA));
 }
-int xen_pt_register_vga_regions(XenHostPCIDevice *dev);
-int xen_pt_unregister_vga_regions(XenHostPCIDevice *dev);
+int xen_pt_register_vga_regions(XenPCIPassthroughState *s);
+int xen_pt_unregister_vga_regions(XenPCIPassthroughState *s);
 void xen_pt_setup_vga(XenPCIPassthroughState *s, XenHostPCIDevice *dev,
                      Error **errp);
 #endif /* XEN_PT_H */

@@ -50,11 +50,16 @@ static struct VGARegion vga_args[] = {
 /*
  * register VGA resources for the domain with assigned gfx
  */
-int xen_pt_register_vga_regions(XenHostPCIDevice *dev)
+int xen_pt_register_vga_regions(XenPCIPassthroughState *s)
 {
+    XenHostPCIDevice *host_dev = &s->real_device;
     int i = 0;
 
-    if (!is_igd_vga_passthrough(dev)) {
+    XEN_PT_LOG(&s->dev, "vendor: %04x device: %04x: class: %08x\n",
+               host_dev->vendor_id, host_dev->device_id,
+               host_dev->class_code);
+
+    if (!is_igd_vga_passthrough(host_dev)) {
         return 0;
     }
 
@@ -85,12 +90,17 @@ int xen_pt_register_vga_regions(XenHostPCIDevice *dev)
 /*
  * unregister VGA resources for the domain with assigned gfx
  */
-int xen_pt_unregister_vga_regions(XenHostPCIDevice *dev)
+int xen_pt_unregister_vga_regions(XenPCIPassthroughState *s)
 {
+    XenHostPCIDevice *host_dev = &s->real_device;
     int i = 0;
     int ret = 0;
 
-    if (!is_igd_vga_passthrough(dev)) {
+    XEN_PT_LOG(&s->dev, "vendor: %04x device: %04x: class: %08x\n",
+               host_dev->vendor_id, host_dev->device_id,
+               host_dev->class_code);
+
+    if (!is_igd_vga_passthrough(host_dev)) {
         return 0;
     }
 
