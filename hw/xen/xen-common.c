@@ -101,10 +101,12 @@ static void xenstore_record_dm_state(struct xs_handle *xs, const char *state)
     }
 
     snprintf(path, sizeof (path), "device-model/%u/state", xen_domid);
-    if (!xs_write(xs, XBT_NULL, path, state, strlen(state))) {
-        fprintf(stderr, "error recording dm state\n");
-        exit(1);
-    }
+    /*
+     * Ignore the return value since xs_write() will fail when running
+     * deprivileged. The failure is not important since in that case it uses
+     * QMP instead of xenstore for startup communication.
+     */
+    xs_write(xs, XBT_NULL, path, state, strlen(state));
 }
 
 
