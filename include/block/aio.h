@@ -343,6 +343,15 @@ void aio_set_fd_handler(AioContext *ctx,
                         AioPollFn *io_poll,
                         void *opaque);
 
+void aio_set_fd_handler3(AioContext *ctx,
+                         int fd,
+                         bool is_external,
+                         IOHandler *io_read,
+                         IOHandler *io_write,
+                         IOHandler *io_exception,
+                         AioPollFn *io_poll,
+                         void *opaque);
+
 /* Set polling begin/end callbacks for a file descriptor that has already been
  * registered with aio_set_fd_handler.  Do nothing if the file descriptor is
  * not registered.
