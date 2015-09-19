@@ -42,13 +42,15 @@ void xenstore_store_pv_console_info(int i, struct Chardev *chr);
 
 void xen_hvm_init(PCMachineState *pcms, MemoryRegion **ram_memory);
 
-void xen_ram_alloc(ram_addr_t ram_addr, ram_addr_t size,
-                   struct MemoryRegion *mr, Error **errp);
+ram_addr_t xen_ram_alloc(ram_addr_t ram_addr, ram_addr_t size,
+                         struct MemoryRegion *mr, Error **errp);
 void xen_hvm_modified_memory(ram_addr_t start, ram_addr_t length);
 
 void xen_register_framebuffer(struct MemoryRegion *mr);
 
 void xen_unassigned_access(hwaddr addr, bool is_write, void *val,
                            unsigned size);
+
+#define VRAM_RESERVED_ADDRESS  0xff000000
 
 #endif /* QEMU_HW_XEN_H */
