@@ -47,6 +47,11 @@ static struct VGARegion vga_args[] = {
     },
 };
 
+#define PCI_VENDOR_ID_ATI               0x1002
+
+extern int xen_pt_register_amd_vf_region(XenPCIPassthroughState *s);
+extern int xen_pt_unregister_amd_vf_region(XenPCIPassthroughState *s);
+
 /*
  * register VGA resources for the domain with assigned gfx
  */
@@ -58,6 +63,14 @@ int xen_pt_register_vga_regions(XenPCIPassthroughState *s)
     XEN_PT_LOG(&s->dev, "vendor: %04x device: %04x: class: %08x\n",
                host_dev->vendor_id, host_dev->device_id,
                host_dev->class_code);
+
+    if ((host_dev->vendor_id == PCI_VENDOR_ID_AMD ||
+         host_dev->vendor_id == PCI_VENDOR_ID_ATI) &&
+        ((host_dev->class_code >> 8) == PCI_CLASS_DISPLAY_OTHER ||
+         (host_dev->class_code >> 8) == PCI_CLASS_DISPLAY_VGA) &&
+        host_dev->is_virtfn) {
+        return xen_pt_register_amd_vf_region(s);
+    }
 
     if (!is_igd_vga_passthrough(host_dev)) {
         return 0;
@@ -99,6 +112,14 @@ int xen_pt_unregister_vga_regions(XenPCIPassthroughState *s)
     XEN_PT_LOG(&s->dev, "vendor: %04x device: %04x: class: %08x\n",
                host_dev->vendor_id, host_dev->device_id,
                host_dev->class_code);
+
+    if ((host_dev->vendor_id == PCI_VENDOR_ID_AMD ||
+         host_dev->vendor_id == PCI_VENDOR_ID_ATI) &&
+        ((host_dev->class_code >> 8) == PCI_CLASS_DISPLAY_OTHER ||
+         (host_dev->class_code >> 8) == PCI_CLASS_DISPLAY_VGA) &&
+        host_dev->is_virtfn) {
+        return xen_pt_unregister_amd_vf_region(s);
+    }
 
     if (!is_igd_vga_passthrough(host_dev)) {
         return 0;
