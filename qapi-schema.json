@@ -3262,6 +3262,23 @@
 { 'command': 'migrate-incoming', 'data': {'uri': 'str' } }
 
 ##
+# @query-migratable:
+#
+# Query whether a VM is migratable or not.
+#
+# Returns: Nothing on success
+#
+# Since: XXX.XXX
+#
+# Example:
+#
+# -> { "execute": "query-migratable" }
+# <- { "return": { } }
+#
+##
+{ 'command': 'query-migratable' }
+
+##
 # @xen-save-devices-state:
 #
 # Save the state of all devices to file. The RAM and the block devices
