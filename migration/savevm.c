@@ -28,6 +28,7 @@
 
 #include "qemu/osdep.h"
 #include "hw/boards.h"
+#include "hw/i386/pc.h"
 #include "hw/xen/xen.h"
 #include "net/net.h"
 #include "migration.h"
@@ -1323,6 +1324,21 @@ static SaveStateEntry *find_se(const char *idstr, int instance_id)
                  instance_id == se->alias_id))
                 return se;
         }
+        /*
+         * The Xen PV device location may change when resuming because the
+         * toolstack starts QEMU with a different NIC configuration when
+         * migrating after hot(un)plugging NICs. Assume there's only one PV
+         * device and match it regardless of its location. This matches
+         * qemu-trad's behavior.
+         */
+        if (strstr(idstr, "/xen-pvdevice") &&
+            strstr(se->idstr, "/xen-pvdevice") &&
+            (instance_id == se->instance_id ||
+             instance_id == se->alias_id) &&
+            object_property_get_bool(qdev_get_machine(),
+                                 PC_MACHINE_TRAD_COMPAT,
+                                 &error_abort))
+            return se;
     }
     return NULL;
 }
