@@ -28,6 +28,7 @@ struct AioHandler
     GPollFD pfd;
     IOHandler *io_read;
     IOHandler *io_write;
+    IOHandler *io_exception;
     AioPollFn *io_poll;
     IOHandler *io_poll_begin;
     IOHandler *io_poll_end;
@@ -56,6 +57,7 @@ static inline int epoll_events_from_pfd(int pfd_events)
 {
     return (pfd_events & G_IO_IN ? EPOLLIN : 0) |
            (pfd_events & G_IO_OUT ? EPOLLOUT : 0) |
+           (pfd_events & G_IO_PRI ? EPOLLPRI : 0) |
            (pfd_events & G_IO_HUP ? EPOLLHUP : 0) |
            (pfd_events & G_IO_ERR ? EPOLLERR : 0);
 }
@@ -108,7 +110,7 @@ static int aio_epoll(AioContext *ctx, int64_t timeout)
 {
     GPollFD pfd = {
         .fd = ctx->epollfd,
-        .events = G_IO_IN | G_IO_OUT | G_IO_HUP | G_IO_ERR,
+        .events = G_IO_IN | G_IO_OUT | G_IO_PRI | G_IO_HUP | G_IO_ERR,
     };
     AioHandler *node;
     int i, ret = 0;
@@ -129,6 +131,7 @@ static int aio_epoll(AioContext *ctx, int64_t timeout)
             node = events[i].data.ptr;
             node->pfd.revents = (ev & EPOLLIN ? G_IO_IN : 0) |
                 (ev & EPOLLOUT ? G_IO_OUT : 0) |
+                (ev & EPOLLPRI ? G_IO_PRI : 0) |
                 (ev & EPOLLHUP ? G_IO_HUP : 0) |
                 (ev & EPOLLERR ? G_IO_ERR : 0);
         }
@@ -225,13 +228,14 @@ static bool aio_remove_fd_handler(AioContext *ctx, AioHandler *node)
     return true;
 }
 
-void aio_set_fd_handler(AioContext *ctx,
-                        int fd,
-                        bool is_external,
-                        IOHandler *io_read,
-                        IOHandler *io_write,
-                        AioPollFn *io_poll,
-                        void *opaque)
+void aio_set_fd_handler3(AioContext *ctx,
+                         int fd,
+                         bool is_external,
+                         IOHandler *io_read,
+                         IOHandler *io_write,
+                         IOHandler *io_exception,
+                         AioPollFn *io_poll,
+                         void *opaque)
 {
     AioHandler *node;
     AioHandler *new_node = NULL;
@@ -244,7 +248,7 @@ void aio_set_fd_handler(AioContext *ctx,
     node = find_aio_handler(ctx, fd);
 
     /* Are we deleting the fd handler? */
-    if (!io_read && !io_write && !io_poll) {
+    if (!io_read && !io_write && !io_exception && !io_poll) {
         if (node == NULL) {
             qemu_lockcnt_unlock(&ctx->list_lock);
             return;
@@ -264,6 +268,7 @@ void aio_set_fd_handler(AioContext *ctx,
         /* Update handler with latest information */
         new_node->io_read = io_read;
         new_node->io_write = io_write;
+        new_node->io_exception = io_exception;
         new_node->io_poll = io_poll;
         new_node->opaque = opaque;
         new_node->is_external = is_external;
@@ -277,6 +282,7 @@ void aio_set_fd_handler(AioContext *ctx,
 
         new_node->pfd.events = (io_read ? G_IO_IN | G_IO_HUP | G_IO_ERR : 0);
         new_node->pfd.events |= (io_write ? G_IO_OUT | G_IO_ERR : 0);
+        new_node->pfd.events |= (io_exception ? G_IO_PRI | G_IO_ERR : 0);
 
         QLIST_INSERT_HEAD_RCU(&ctx->aio_handlers, new_node, node);
     }
@@ -305,6 +311,18 @@ void aio_set_fd_handler(AioContext *ctx,
     if (deleted) {
         g_free(node);
     }
+}
+
+void aio_set_fd_handler(AioContext *ctx,
+                        int fd,
+                        bool is_external,
+                        IOHandler *io_read,
+                        IOHandler *io_write,
+                        AioPollFn *io_poll,
+                        void *opaque)
+{
+    aio_set_fd_handler3(ctx, fd, is_external, io_read, io_write, NULL,
+                        io_poll, opaque);
 }
 
 void aio_set_fd_poll(AioContext *ctx, int fd,
@@ -406,6 +424,10 @@ bool aio_pending(AioContext *ctx)
             result = true;
             break;
         }
+        if (revents & (G_IO_PRI | G_IO_ERR) && node->io_exception &&
+            aio_node_check(ctx, node->is_external)) {
+            return true;
+        }
     }
     qemu_lockcnt_dec(&ctx->list_lock);
 
@@ -439,6 +461,13 @@ static bool aio_dispatch_handlers(AioContext *ctx)
             aio_node_check(ctx, node->is_external) &&
             node->io_write) {
             node->io_write(node->opaque);
+            progress = true;
+        }
+        if (!node->deleted &&
+            (revents & (G_IO_PRI | G_IO_ERR)) &&
+            aio_node_check(ctx, node->is_external) &&
+            node->io_exception) {
+            node->io_exception(node->opaque);
             progress = true;
         }
 
