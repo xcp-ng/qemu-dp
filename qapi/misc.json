@@ -1602,6 +1602,23 @@
 }
 
 ##
+# @query-migratable:
+#
+# Query whether a VM is migratable or not.
+#
+# Returns: Nothing on success
+#
+# Since: XXX.XXX
+#
+# Example:
+#
+# -> { "execute": "query-migratable" }
+# <- { "return": { } }
+#
+##
+{ 'command': 'query-migratable' }
+
+##
 # @query-memory-devices:
 #
 # Lists available memory devices and their state

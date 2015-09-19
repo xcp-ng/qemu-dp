@@ -2733,6 +2733,11 @@ int save_snapshot(const char *name, Error **errp)
     return ret;
 }
 
+void qmp_query_migratable(Error **errp)
+{
+    qemu_savevm_state_blocked(errp);
+}
+
 void qmp_xen_save_devices_state(const char *filename, bool has_live, bool live,
                                 Error **errp)
 {
