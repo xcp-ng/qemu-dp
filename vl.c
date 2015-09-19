@@ -62,6 +62,7 @@ int main(int argc, char **argv)
 #include "hw/isa/isa.h"
 #include "hw/scsi/scsi.h"
 #include "hw/display/vga.h"
+#include "hw/display/vgt_vga.h"
 #include "hw/bt.h"
 #include "sysemu/watchdog.h"
 #include "hw/firmware/smbios.h"
@@ -3829,6 +3830,35 @@ int main(int argc, char **argv, char **envp)
             case QEMU_OPTION_nouserconfig:
                 /* Nothing to be parsed here. Especially, do not error out below. */
                 break;
+#ifdef CONFIG_VGT
+            case QEMU_OPTION_xengt:
+                vgt_vga_enabled = true;
+                break;
+            case QEMU_OPTION_vgt_low_gm_sz:
+                {
+                    char *ptr;
+                    vgt_low_gm_sz = strtol(optarg, &ptr, 10);
+                }
+                break;
+            case QEMU_OPTION_vgt_high_gm_sz:
+                {
+                    char *ptr;
+                    vgt_high_gm_sz = strtol(optarg, &ptr, 10);
+                }
+                break;
+            case QEMU_OPTION_vgt_fence_sz:
+                {
+                    char *ptr;
+                    vgt_fence_sz = strtol(optarg, &ptr, 10);
+                }
+                break;
+            case QEMU_OPTION_vgt_cap:
+                {
+                   char *ptr;
+                   vgt_cap = strtol(optarg, &ptr, 10);
+                }
+		break;
+#endif
             default:
                 if (os_parse_cmd_args(popt->index, optarg)) {
                     error_report("Option not supported in this build");
