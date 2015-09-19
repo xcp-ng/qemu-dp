@@ -346,6 +346,9 @@ struct PCIDevice {
     MSIVectorUseNotifier msix_vector_use_notifier;
     MSIVectorReleaseNotifier msix_vector_release_notifier;
     MSIVectorPollNotifier msix_vector_poll_notifier;
+
+    uint32_t subvendor_id;
+    uint32_t subsystem_id;
 };
 
 void pci_register_bar(PCIDevice *pci_dev, int region_num,
