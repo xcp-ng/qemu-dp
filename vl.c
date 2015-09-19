@@ -4195,6 +4195,40 @@ int main(int argc, char **argv, char **envp)
                     exit(1);
                 }
                 break;
+#ifdef CONFIG_VGT
+            case QEMU_OPTION_xengt:
+                vgt_vga_enabled = true;
+                break;
+            case QEMU_OPTION_vgt_low_gm_sz:
+                {
+                    char *ptr;
+                    vgt_low_gm_sz = strtol(optarg, &ptr, 10);
+                }
+                break;
+            case QEMU_OPTION_vgt_high_gm_sz:
+                {
+                    char *ptr;
+                    vgt_high_gm_sz = strtol(optarg, &ptr, 10);
+                }
+                break;
+            case QEMU_OPTION_vgt_fence_sz:
+                {
+                    char *ptr;
+                    vgt_fence_sz = strtol(optarg, &ptr, 10);
+                }
+                break;
+            case QEMU_OPTION_vgt_cap:
+                {
+                   char *ptr;
+                   vgt_cap = strtol(optarg, &ptr, 10);
+                }
+		break;
+            case QEMU_OPTION_vgt_monitor_config_file:
+                {
+                   vgt_monitor_config_file = strdup(optarg);
+                }
+		break;
+#endif
             default:
                 os_parse_cmd_args(popt->index, optarg);
             }
