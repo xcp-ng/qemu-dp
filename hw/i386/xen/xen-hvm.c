@@ -39,7 +39,7 @@
     do { } while (0)
 #endif
 
-static MemoryRegion ram_memory, ram_640k, ram_lo, ram_hi;
+static MemoryRegion ram_memory, ram_640k, ram_lo, ram_hi, reserved_memory;
 static MemoryRegion *framebuffer;
 static bool xen_in_migration;
 
@@ -237,6 +237,13 @@ static void xen_ram_init(PCMachineState *pcms,
                                  pcms->above_4g_mem_size);
         memory_region_add_subregion(sysmem, 0x100000000ULL, &ram_hi);
     }
+
+    /* Prevent allocating RAM where the MMIO hole is. */
+    memory_region_init_ram_nomigrate(&reserved_memory, NULL, "xen.reserved",
+                                     VRAM_RESERVED_ADDRESS - user_lowmem,
+                                     &error_fatal);
+    memory_region_add_subregion_overlap(sysmem, user_lowmem, &reserved_memory,
+                                        -1);
 }
 
 void xen_ram_alloc(ram_addr_t ram_addr, ram_addr_t size, MemoryRegion *mr,
@@ -254,7 +261,7 @@ void xen_ram_alloc(ram_addr_t ram_addr, ram_addr_t size, MemoryRegion *mr,
         return;
     }
 
-    if (mr == &ram_memory) {
+    if (mr == &ram_memory || mr == &reserved_memory) {
         return;
     }
 
@@ -466,7 +473,7 @@ static void xen_set_memory(struct MemoryListener *listener,
     bool log_dirty = memory_region_is_logging(section->mr, DIRTY_MEMORY_VGA);
     hvmmem_type_t mem_type;
 
-    if (section->mr == &ram_memory) {
+    if (section->mr == &ram_memory || section->mr == &reserved_memory) {
         return;
     } else {
         if (add) {
