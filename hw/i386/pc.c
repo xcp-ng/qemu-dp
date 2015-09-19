@@ -866,7 +866,8 @@ static void handle_a20_line_change(void *opaque, int irq, int level)
 
     /* XXX: send to all CPUs ? */
     /* XXX: add logic to handle multiple A20 line sources */
-    x86_cpu_set_a20(cpu, level);
+    if (!xen_enabled())
+        x86_cpu_set_a20(cpu, level);
 }
 
 #define NE2000_NB_MAX 6
