@@ -1,4 +1,5 @@
-block-obj-y += raw-format.o vmdk.o vpc.o
+block-obj-y += raw-format.o
+block-obj-$(call lnot,$(CONFIG_XEN)) += vmdk.o vpc.o
 block-obj-$(CONFIG_QCOW1) += qcow.o
 block-obj-$(CONFIG_VDI) += vdi.o
 block-obj-$(CONFIG_CLOOP) += cloop.o
@@ -9,7 +10,7 @@ block-obj-$(CONFIG_DMG) += dmg.o
 block-obj-y += qcow2.o qcow2-refcount.o qcow2-cluster.o qcow2-snapshot.o qcow2-cache.o qcow2-bitmap.o qcow2-threads.o
 block-obj-$(CONFIG_QED) += qed.o qed-l2-cache.o qed-table.o qed-cluster.o
 block-obj-$(CONFIG_QED) += qed-check.o
-block-obj-y += vhdx.o vhdx-endian.o vhdx-log.o
+block-obj-$(call lnot,$(CONFIG_XEN)) += vhdx.o vhdx-endian.o vhdx-log.o
 block-obj-y += quorum.o
 block-obj-y += blkdebug.o blkverify.o blkreplay.o
 block-obj-$(CONFIG_PARALLELS) += parallels.o
