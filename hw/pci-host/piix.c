@@ -309,6 +309,10 @@ static void i440fx_realize(PCIDevice *dev, Error **errp)
     if (object_property_get_bool(qdev_get_machine(), "iommu", NULL)) {
         warn_report("i440fx doesn't support emulated iommu");
     }
+
+    if (vgt_vga_enabled && xen_enabled()) {
+        vgt_bridge_pci_conf_init(dev);
+    }
 }
 
 PCIBus *i440fx_init(const char *host_type, const char *pci_type,
