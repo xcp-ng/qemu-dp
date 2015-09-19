@@ -244,6 +244,7 @@ static int inet_listen_saddr(InetSocketAddress *saddr,
                                 sizeof(v6only));
             }
 #endif
+            socket_set_fast_reuse(slisten);
             if (bind(slisten, e->ai_addr, e->ai_addrlen) == 0) {
                 goto listen;
             }
