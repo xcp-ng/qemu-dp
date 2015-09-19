@@ -2505,6 +2505,7 @@ static void nvme_realize(PCIDevice *pci_dev, Error **errp)
 
 static void nvme_exit(PCIDevice *pci_dev)
 {
+    int i;
     NvmeCtrl *n = NVME(pci_dev);
 
     nvme_clear_ctrl(n);
@@ -2518,6 +2519,11 @@ static void nvme_exit(PCIDevice *pci_dev)
         g_free(n->cmbuf);
     }
     msix_uninit_exclusive_bar(pci_dev);
+
+    for (i = 0; i < n->num_namespaces; i++) {
+        if (n->namespaces[i])
+            blk_remove_bs(n->namespaces[i]->conf.blk);
+    }
 }
 
 static Property nvme_props[] = {
