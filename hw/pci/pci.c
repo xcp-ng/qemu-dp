@@ -60,6 +60,8 @@ static Property pci_props[] = {
     DEFINE_PROP_UINT32("rombar",  PCIDevice, rom_bar, 1),
     DEFINE_PROP_BIT("multifunction", PCIDevice, cap_present,
                     QEMU_PCI_CAP_MULTIFUNCTION_BITNR, false),
+    DEFINE_PROP_UINT32("subvendor_id", PCIDevice, subvendor_id, 0),
+    DEFINE_PROP_UINT32("subsystem_id", PCIDevice, subsystem_id, 0),
     DEFINE_PROP_BIT("command_serr_enable", PCIDevice, cap_present,
                     QEMU_PCI_CAP_SERR_BITNR, true),
     DEFINE_PROP_BIT("x-pcie-lnksta-dllla", PCIDevice, cap_present,
@@ -1019,7 +1021,12 @@ static PCIDevice *do_pci_register_device(PCIDevice *pci_dev, PCIBus *bus,
     pci_config_set_class(pci_dev->config, pc->class_id);
 
     if (!pc->is_bridge) {
-        if (pc->subsystem_vendor_id || pc->subsystem_id) {
+        if (pci_dev->subvendor_id || pci_dev->subsystem_id) {
+            pci_set_word(pci_dev->config + PCI_SUBSYSTEM_VENDOR_ID,
+                         pci_dev->subvendor_id);
+            pci_set_word(pci_dev->config + PCI_SUBSYSTEM_ID,
+                         pci_dev->subsystem_id);
+        } else if (pc->subsystem_vendor_id || pc->subsystem_id) {
             pci_set_word(pci_dev->config + PCI_SUBSYSTEM_VENDOR_ID,
                          pc->subsystem_vendor_id);
             pci_set_word(pci_dev->config + PCI_SUBSYSTEM_ID,
