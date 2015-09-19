@@ -59,6 +59,7 @@
 #include "sysemu/runstate.h"
 #include "hw/boards.h"
 #include "hw/hw.h"
+#include "hw/xen/xen.h"
 
 #ifdef CONFIG_LINUX
 
@@ -1845,6 +1846,9 @@ static void qemu_cpu_kick_thread(CPUState *cpu)
 
 void qemu_cpu_kick(CPUState *cpu)
 {
+    if (xen_enabled())
+        return;
+
     qemu_cond_broadcast(cpu->halt_cond);
     if (tcg_enabled()) {
         if (qemu_tcg_mttcg_enabled()) {
@@ -1872,6 +1876,9 @@ void qemu_cpu_kick_self(void)
 
 bool qemu_cpu_is_self(CPUState *cpu)
 {
+    // there are no thread since we don't init `cpu' under Xen.
+    if (xen_enabled())
+        return false;
     return qemu_thread_is_self(cpu->thread);
 }
 
@@ -1934,6 +1941,9 @@ void pause_all_vcpus(void)
         }
     }
 
+    if (xen_enabled())
+        return;
+
     /* We need to drop the replay_lock so any vCPU threads woken up
      * can finish their replay tasks
      */
@@ -1973,6 +1983,10 @@ void cpu_remove_sync(CPUState *cpu)
     cpu->stop = true;
     cpu->unplug = true;
     qemu_cpu_kick(cpu);
+
+    if (xen_enabled())
+        return;
+
     qemu_mutex_unlock_iothread();
     qemu_thread_join(cpu->thread);
     qemu_mutex_lock_iothread();
@@ -2117,6 +2131,9 @@ static void qemu_dummy_start_vcpu(CPUState *cpu)
 void qemu_init_vcpu(CPUState *cpu)
 {
     MachineState *ms = MACHINE(qdev_get_machine());
+
+    if (xen_enabled())
+        return;
 
     cpu->nr_cores = ms->smp.cores;
     cpu->nr_threads =  ms->smp.threads;
