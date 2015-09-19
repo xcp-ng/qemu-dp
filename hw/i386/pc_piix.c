@@ -34,6 +34,7 @@
 #include "hw/southbridge/piix.h"
 #include "hw/display/ramfb.h"
 #include "hw/display/vgpu.h"
+#include "hw/display/vgt_vga.h"
 #include "hw/firmware/smbios.h"
 #include "hw/pci/pci.h"
 #include "hw/pci/pci_ids.h"
@@ -225,6 +226,14 @@ static void pc_init1(MachineState *machine,
         x86_register_ferr_irq(x86ms->gsi[13]);
     }
 
+    /*
+     * Initialize XenGT hooks before normal VGA init.
+     * IGD should be initialized followed by a PCI stdvga card
+     * at 00:02.0 to provide legacy emulation.
+     */
+    if (vgt_vga_enabled && pcmc->pci_enabled) {
+        vgt_vga_init(pci_bus);
+    }
     pc_vga_init(isa_bus, pcmc->pci_enabled ? pci_bus : NULL);
 
     assert(pcms->vmport != ON_OFF_AUTO__MAX);
