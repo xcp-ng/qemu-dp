@@ -621,7 +621,8 @@ static void handle_a20_line_change(void *opaque, int irq, int level)
 
     /* XXX: send to all CPUs ? */
     /* XXX: add logic to handle multiple A20 line sources */
-    x86_cpu_set_a20(cpu, level);
+    if (!xen_enabled())
+        x86_cpu_set_a20(cpu, level);
 }
 
 int e820_add_entry(uint64_t address, uint64_t length, uint32_t type)
