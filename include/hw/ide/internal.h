@@ -317,6 +317,9 @@ typedef struct IDEDMAOps IDEDMAOps;
 #define SMART_DISABLE         0xd9
 #define SMART_STATUS          0xda
 
+#define IDE_CACHE_SIZE (1024 * 64)
+#define IDE_CACHE_SECTORS (IDE_CACHE_SIZE / BDRV_SECTOR_SIZE)
+
 typedef enum { IDE_HD, IDE_CD, IDE_CFATA } IDEDriveKind;
 
 typedef void EndTransferFunc(IDEState *);
@@ -440,6 +443,10 @@ struct IDEState {
     uint8_t *smart_selftest_data;
     /* AHCI */
     int ncq_queues;
+    /* Read cache buffer */
+    uint8_t cache_buffer[IDE_CACHE_SIZE];
+    int64_t cache_start;
+    bool cache_valid;
 };
 
 struct IDEDMAOps {
