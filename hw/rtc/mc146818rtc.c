@@ -29,6 +29,7 @@
 #include "qemu/bcd.h"
 #include "hw/irq.h"
 #include "hw/qdev-properties.h"
+#include "hw/xen/xen.h"
 #include "qemu/timer.h"
 #include "sysemu/sysemu.h"
 #include "sysemu/replay.h"
@@ -615,7 +616,8 @@ static void rtc_set_time(RTCState *s)
     s->base_rtc = mktimegm(&tm);
     s->last_update = qemu_clock_get_ns(rtc_clock);
 
-    qapi_event_send_rtc_change(qemu_timedate_diff(&tm));
+    if (!xen_enabled())
+        qapi_event_send_rtc_change(qemu_timedate_diff(&tm));
 }
 
 static void rtc_set_cmos(RTCState *s, const struct tm *tm)
