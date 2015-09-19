@@ -216,7 +216,7 @@ static void pc_init1(MachineState *machine,
 
     pc_i8259_create(isa_bus, gsi_state->i8259_irq);
 
-    if (pcmc->pci_enabled) {
+    if (pcmc->pci_enabled && !xen_enabled()) {
         ioapic_init_gsi(gsi_state, "i440fx");
     }
 
