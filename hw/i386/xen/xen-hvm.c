@@ -509,7 +509,7 @@ static void xen_set_memory(struct MemoryListener *listener,
         return;
     }
 
-    if (log_dirty != add) {
+    if (!(log_dirty == add || (section->mr == framebuffer && start_addr > 0xbffff))) {
         return;
     }
 
