@@ -770,8 +770,11 @@ QemuOptsList qemu_legacy_drive_opts = {
             .name = "copy-on-read",
             .type = QEMU_OPT_BOOL,
             .help = "copy read data from backing file into image file",
+        },{
+            .name = "force-lba",
+            .type = QEMU_OPT_BOOL,
+            .help = "XenServer hack to force lba geometry",
         },
-
         { /* end of list */ }
     },
 };
@@ -791,6 +794,7 @@ DriveInfo *drive_new(QemuOpts *all_opts, BlockInterfaceType block_default_type)
     const char *werror, *rerror;
     bool read_only = false;
     bool copy_on_read;
+    bool force_lba;
     const char *serial;
     const char *filename;
     Error *local_err = NULL;
@@ -974,6 +978,11 @@ DriveInfo *drive_new(QemuOpts *all_opts, BlockInterfaceType block_default_type)
             error_report("'%s' invalid translation type", value);
             goto fail;
         }
+    }
+
+    force_lba = qemu_opt_get_bool(legacy_opts, "force-lba", false);
+    if (force_lba) {
+        translation = BIOS_ATA_TRANSLATION_FORCELBA;
     }
 
     if (media == MEDIA_CDROM) {
