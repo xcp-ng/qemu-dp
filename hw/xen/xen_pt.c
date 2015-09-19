@@ -803,7 +803,8 @@ static void xen_pt_realize(PCIDevice *d, Error **errp)
 
     /* Setup VGA bios for passthrough GFX */
     if ((s->real_device.domain == 0) && (s->real_device.bus == 0) &&
-        (s->real_device.dev == 2) && (s->real_device.func == 0)) {
+        (s->real_device.dev == 2) && (s->real_device.func == 0) &&
+        has_igd_gfx_passthru) {
         if (!is_igd_vga_passthrough(&s->real_device)) {
             error_setg(errp, "Need to enable igd-passthru if you're trying"
                     " to passthrough IGD GFX");
