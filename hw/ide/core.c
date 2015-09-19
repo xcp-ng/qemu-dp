@@ -724,6 +724,7 @@ static void ide_sector_read(IDEState *s)
 {
     int64_t sector_num;
     int n;
+    int ret = 0;
 
     s->status = READY_STAT | SEEK_STAT;
     s->error = 0; /* not needed by IDE spec, but needed by Windows */
@@ -757,8 +758,47 @@ static void ide_sector_read(IDEState *s)
 
     block_acct_start(blk_get_stats(s->blk), &s->acct,
                      n * BDRV_SECTOR_SIZE, BLOCK_ACCT_READ);
-    s->pio_aiocb = ide_buffered_readv(s, sector_num, &s->qiov, n,
-                                      ide_sector_read_cb, s);
+
+    /* If the cache is valid and the read fits entirely within the cache,
+     * we can just copy the data we already have. It would be possible
+     * to modify the iov_base/iov_len to shorten a read which overlapped
+     * one end of the cache but we're not bothering here for simplicity and
+     * because it's not likely much of an improvement anyway */
+    if (s->cache_valid &&
+        sector_num >= s->cache_start &&
+        sector_num + n <= (s->cache_start + IDE_CACHE_SECTORS)) {
+        memcpy(s->io_buffer,
+            &s->cache_buffer[(sector_num - s->cache_start) * BDRV_SECTOR_SIZE],
+            n * BDRV_SECTOR_SIZE);
+        goto out;
+    }
+
+    /* If a cache miss is more than 1/2 of the cache size, do not bother with the
+     * cache - just do the read anyway. This is based on the guess that we are
+     * mostly helping with readahead, and the next read would not use the cache
+     * because it would overlap it */
+    if (n > IDE_CACHE_SECTORS / 2) {
+        ret = bdrv_read((blk_bs(s->blk))->file, sector_num, s->io_buffer, n);
+        goto out;
+    }
+
+    /* A cache miss worth bothering with. Populate & use */
+    s->cache_start = sector_num;
+    /* It is safe to just read IDE_CACHE_SECTORS, since bdrv_read() will
+     * eventually call bdrv_aligned_preadv(), which will fill any read
+     * past EOF with zeros */
+    ret = bdrv_read((blk_bs(s->blk))->file, s->cache_start, s->cache_buffer, IDE_CACHE_SECTORS);
+    if (ret != 0) {
+        s->cache_valid = false;
+        goto out;
+    }
+    s->cache_valid = true;
+    memcpy(s->io_buffer,
+        &s->cache_buffer[(sector_num - s->cache_start) * BDRV_SECTOR_SIZE],
+        n * BDRV_SECTOR_SIZE);
+
+out:
+    ide_sector_read_cb(s, ret);
 }
 
 void dma_buf_commit(IDEState *s, uint32_t tx_bytes)
@@ -1008,6 +1048,7 @@ static void ide_sector_write(IDEState *s)
 #if defined(DEBUG_IDE)
     printf("sector=%" PRId64 "\n", sector_num);
 #endif
+    s->cache_valid = false;
     n = s->nsector;
     if (n > s->req_nb_sectors) {
         n = s->req_nb_sectors;
@@ -1315,6 +1356,7 @@ static void ide_reset(IDEState *s)
     s->end_transfer_func = ide_dummy_transfer_stop;
     ide_dummy_transfer_stop(s);
     s->media_changed = 0;
+    s->cache_valid = false;
 }
 
 static bool cmd_nop(IDEState *s, uint8_t cmd)
@@ -2426,6 +2468,7 @@ int ide_init_drive(IDEState *s, BlockBackend *blk, IDEDriveKind kind,
     s->smart_autosave = 1;
     s->smart_errors = 0;
     s->smart_selftest_count = 0;
+    s->cache_valid = false;
     if (kind == IDE_CD) {
         blk_set_dev_ops(blk, &ide_cd_block_ops, s);
         blk_set_guest_block_size(blk, 2048);
