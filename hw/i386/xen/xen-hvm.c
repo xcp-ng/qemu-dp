@@ -606,6 +606,11 @@ static void xen_sync_dirty_bitmap(XenIOState *state,
         return;
     }
 
+    if (likely(!xen_in_migration)) {
+        memory_region_set_dirty(framebuffer, 0, size);
+        return;
+    }
+
     rc = xen_track_dirty_vram(xen_domid, start_addr >> TARGET_PAGE_BITS,
                               npages, bitmap);
     if (rc < 0) {
