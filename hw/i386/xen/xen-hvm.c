@@ -17,6 +17,7 @@
 #include "hw/southbridge/piix.h"
 #include "hw/irq.h"
 #include "hw/hw.h"
+#include "hw/display/vgt_vga.h"
 #include "hw/i386/apic-msidef.h"
 #include "hw/xen/xen_common.h"
 #include "hw/xen/xen-legacy-backend.h"
@@ -1584,6 +1585,25 @@ void destroy_hvm_domain(bool reboot)
 void xen_register_framebuffer(MemoryRegion *mr)
 {
     framebuffer = mr;
+
+    /*
+     * If GVT-g is in use, a stdvga device is still needed at 00:02.0 to
+     * provide legacy emulation. But, the IGD is implemented in the kernel and
+     * it also sits at 00:02.0 which hides the stdvga device's BARs. Therefore
+     * its VRAM needs to be placed in a different BAR. The PCH bridge which is
+     * emulated when GVT-g is used is a convenient place to put it. When this
+     * is done, hvmloader will correctly discover and map it (despite it being
+     * on a bridge). QEMU will then expose that location to the guest via the
+     * VBE_DISPI_INDEX_LFB_ADDRESS_H register.
+     */
+    if (vgt_vga_enabled) {
+        if (!vgt_bridge) {
+            DPRINTF("Could not find VGT bridge!");
+            return;
+        }
+
+        pci_register_bar(vgt_bridge, 0, PCI_BASE_ADDRESS_MEM_PREFETCH, mr);
+    }
 }
 
 void xen_shutdown_fatal_error(const char *fmt, ...)
