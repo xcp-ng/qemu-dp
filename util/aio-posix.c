@@ -29,6 +29,7 @@ struct AioHandler
     GPollFD pfd;
     IOHandler *io_read;
     IOHandler *io_write;
+    IOHandler *io_exception;
     AioPollFn *io_poll;
     IOHandler *io_poll_begin;
     IOHandler *io_poll_end;
@@ -57,6 +58,7 @@ static inline int epoll_events_from_pfd(int pfd_events)
 {
     return (pfd_events & G_IO_IN ? EPOLLIN : 0) |
            (pfd_events & G_IO_OUT ? EPOLLOUT : 0) |
+           (pfd_events & G_IO_PRI ? EPOLLPRI : 0) |
            (pfd_events & G_IO_HUP ? EPOLLHUP : 0) |
            (pfd_events & G_IO_ERR ? EPOLLERR : 0);
 }
@@ -129,6 +131,7 @@ static int aio_epoll(AioContext *ctx, GPollFD *pfds,
             node = events[i].data.ptr;
             node->pfd.revents = (ev & EPOLLIN ? G_IO_IN : 0) |
                 (ev & EPOLLOUT ? G_IO_OUT : 0) |
+                (ev & EPOLLPRI ? G_IO_PRI : 0) |
                 (ev & EPOLLHUP ? G_IO_HUP : 0) |
                 (ev & EPOLLERR ? G_IO_ERR : 0);
         }
@@ -200,13 +203,14 @@ static AioHandler *find_aio_handler(AioContext *ctx, int fd)
     return NULL;
 }
 
-void aio_set_fd_handler(AioContext *ctx,
-                        int fd,
-                        bool is_external,
-                        IOHandler *io_read,
-                        IOHandler *io_write,
-                        AioPollFn *io_poll,
-                        void *opaque)
+void aio_set_fd_handler3(AioContext *ctx,
+                         int fd,
+                         bool is_external,
+                         IOHandler *io_read,
+                         IOHandler *io_write,
+                         IOHandler *io_exception,
+                         AioPollFn *io_poll,
+                         void *opaque)
 {
     AioHandler *node;
     bool is_new = false;
@@ -217,7 +221,7 @@ void aio_set_fd_handler(AioContext *ctx,
     node = find_aio_handler(ctx, fd);
 
     /* Are we deleting the fd handler? */
-    if (!io_read && !io_write && !io_poll) {
+    if (!io_read && !io_write && !io_exception && !io_poll) {
         if (node == NULL) {
             qemu_lockcnt_unlock(&ctx->list_lock);
             return;
@@ -259,12 +263,14 @@ void aio_set_fd_handler(AioContext *ctx,
         /* Update handler with latest information */
         node->io_read = io_read;
         node->io_write = io_write;
+        node->io_exception = io_exception;
         node->io_poll = io_poll;
         node->opaque = opaque;
         node->is_external = is_external;
 
         node->pfd.events = (io_read ? G_IO_IN | G_IO_HUP | G_IO_ERR : 0);
         node->pfd.events |= (io_write ? G_IO_OUT | G_IO_ERR : 0);
+        node->pfd.events |= (io_exception ? G_IO_PRI | G_IO_ERR : 0);
     }
 
     aio_epoll_update(ctx, node, is_new);
@@ -274,6 +280,18 @@ void aio_set_fd_handler(AioContext *ctx,
     if (deleted) {
         g_free(node);
     }
+}
+
+void aio_set_fd_handler(AioContext *ctx,
+                        int fd,
+                        bool is_external,
+                        IOHandler *io_read,
+                        IOHandler *io_write,
+                        AioPollFn *io_poll,
+                        void *opaque)
+{
+    aio_set_fd_handler3(ctx, fd, is_external, io_read, io_write, NULL,
+                        NULL, opaque);
 }
 
 void aio_set_fd_poll(AioContext *ctx, int fd,
@@ -375,6 +393,10 @@ bool aio_pending(AioContext *ctx)
             result = true;
             break;
         }
+        if (revents & (G_IO_PRI | G_IO_ERR) && node->io_exception &&
+            aio_node_check(ctx, node->is_external)) {
+            return true;
+        }
     }
     qemu_lockcnt_dec(&ctx->list_lock);
 
@@ -408,6 +430,13 @@ static bool aio_dispatch_handlers(AioContext *ctx)
             aio_node_check(ctx, node->is_external) &&
             node->io_write) {
             node->io_write(node->opaque);
+            progress = true;
+        }
+        if (!node->deleted &&
+            (revents & (G_IO_PRI | G_IO_ERR)) &&
+            aio_node_check(ctx, node->is_external) &&
+            node->io_exception) {
+            node->io_exception(node->opaque);
             progress = true;
         }
 
@@ -614,7 +643,7 @@ bool aio_poll(AioContext *ctx, bool blocking)
             AioHandler epoll_handler;
 
             epoll_handler.pfd.fd = ctx->epollfd;
-            epoll_handler.pfd.events = G_IO_IN | G_IO_OUT | G_IO_HUP | G_IO_ERR;
+            epoll_handler.pfd.events = G_IO_IN | G_IO_OUT | G_IO_PRI | G_IO_HUP | G_IO_ERR;
             npfd = 0;
             add_pollfd(&epoll_handler);
             ret = aio_epoll(ctx, pollfds, npfd, timeout);

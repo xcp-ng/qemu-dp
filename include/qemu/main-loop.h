@@ -203,6 +203,11 @@ void qemu_set_fd_handler(int fd,
                          IOHandler *fd_write,
                          void *opaque);
 
+void qemu_set_fd_handler3(int fd,
+                          IOHandler *fd_read,
+                          IOHandler *fd_write,
+                          IOHandler *fd_exception,
+                          void *opaque);
 
 /**
  * event_notifier_set_handler: Register an EventNotifier with the main loop
