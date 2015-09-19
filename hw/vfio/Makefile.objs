@@ -1,4 +1,4 @@
-ifeq ($(CONFIG_LINUX), y)
+ifeq ($(CONFIG_LINUX)$(CONFIG_XEN), yn)
 obj-$(CONFIG_SOFTMMU) += common.o
 obj-$(CONFIG_PCI) += pci.o pci-quirks.o
 obj-$(CONFIG_VFIO_CCW) += ccw.o
