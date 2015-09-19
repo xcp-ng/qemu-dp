@@ -503,8 +503,8 @@ static uint64_t pci_msix_read(void *opaque, hwaddr addr,
         /* Pending Bit Array (PBA) */
         if (s->msix->phys_iomem_base)
             return *(uint32_t *)(msix->phys_iomem_base + addr);
-        XEN_PT_LOG(&s->dev, "reading PBA, addr %#lx, offset %#lx\n",
-                   addr, addr - msix->total_entries * PCI_MSIX_ENTRY_SIZE);
+        xen_pt_log(&s->dev, "%s: reading PBA, addr %#lx, offset %#lx\n",
+                   __func__, addr, addr - msix->total_entries * PCI_MSIX_ENTRY_SIZE);
         return 0xFFFFFFFF;
     }
 }
