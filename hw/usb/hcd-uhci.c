@@ -1182,7 +1182,7 @@ static void uhci_frame_timer(void *opaque)
     }
     s->pending_int_mask = 0;
 
-    timer_mod(s->frame_timer, t_now + frame_t);
+    timer_mod(s->frame_timer, t_now + frame_t * 10);
 }
 
 static const MemoryRegionOps uhci_ioport_ops = {
