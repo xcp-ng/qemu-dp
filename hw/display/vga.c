@@ -1759,6 +1759,7 @@ static void vga_draw_blank(VGACommonState *s, int full_update)
 #define GMODE_TEXT     0
 #define GMODE_GRAPH    1
 #define GMODE_BLANK 2
+#define GMODE_XENGT    3
 
 static void vga_update_display(void *opaque)
 {
@@ -1772,7 +1773,9 @@ static void vga_update_display(void *opaque)
         /* nothing to do */
     } else {
         full_update = 0;
-        if (!(s->ar_index & 0x20)) {
+        if (xengt_is_enabled())
+            graphic_mode = GMODE_XENGT;
+        else if (!(s->ar_index & 0x20)) {
             graphic_mode = GMODE_BLANK;
         } else {
             graphic_mode = s->gr[VGA_GFX_MISC] & VGA_GR06_GRAPHICS_MODE;
@@ -1783,6 +1786,9 @@ static void vga_update_display(void *opaque)
             full_update = 1;
         }
         switch(graphic_mode) {
+        case GMODE_XENGT:
+            xengt_draw_primary(s->con, full_update);
+            break;
         case GMODE_TEXT:
             vga_draw_text(s, full_update);
             break;
@@ -2307,7 +2313,7 @@ void vga_init(VGACommonState *s, Object *obj, MemoryRegion *address_space,
     }
     s->vbe_extended = object_property_get_bool(qdev_get_machine(),
                                                PC_MACHINE_TRAD_COMPAT,
-                                               &error_abort);
+                                               &error_abort) || vgt_vga_enabled;
 }
 
 void vga_init_vbe(VGACommonState *s, Object *obj, MemoryRegion *system_memory)
