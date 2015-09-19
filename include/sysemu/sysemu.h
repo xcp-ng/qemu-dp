@@ -106,6 +106,10 @@ typedef enum {
 extern int vga_interface_type;
 #define xenfb_enabled (vga_interface_type == VGA_XENFB)
 
+void xengt_drm_init(void);
+bool xengt_is_enabled(void);
+void xengt_draw_primary(QemuConsole *con, int full_update);
+
 extern int graphic_width;
 extern int graphic_height;
 extern int graphic_depth;

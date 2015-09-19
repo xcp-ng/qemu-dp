@@ -1550,6 +1550,53 @@ Disable VGA card.
 @end table
 ETEXI
 
+#ifdef CONFIG_VGT
+DEF("xengt", 0, QEMU_OPTION_xengt,
+    "-xengt     Enable Intel GVT-g\n",
+    QEMU_ARCH_ALL)
+STEXI
+@item -xengt
+@findex -xengt
+Enable Intel GVT-g.
+ETEXI
+
+DEF("vgt_low_gm_sz", 1, QEMU_OPTION_vgt_low_gm_sz,
+    "-vgt_low_gm_sz [MB] allocated aperture size\n",
+    QEMU_ARCH_ALL)
+STEXI
+@item -vgt_low_gm_sz @var{size}
+@findex -vgt_low_gm_sz
+Set the allocated aperture size.
+ETEXI
+
+DEF("vgt_high_gm_sz", 1, QEMU_OPTION_vgt_high_gm_sz,
+    "-vgt_high_gm_sz [MB] allocated GM size\n",
+    QEMU_ARCH_ALL)
+STEXI
+@item -vgt_high_gm_sz @var{size}
+@findex -vgt_high_gm_sz
+Set the allocated aperture size.
+ETEXI
+
+DEF("vgt_fence_sz", 1, QEMU_OPTION_vgt_fence_sz,
+    "-vgt_fence_sz [num] allocated number of fence registers\n",
+    QEMU_ARCH_ALL)
+STEXI
+@item -vgt_fence_sz @var{size}
+@findex -vgt_fence_sz
+Set the allocated aperture size.
+ETEXI
+
+DEF("vgt_cap", 1, QEMU_OPTION_vgt_cap,
+    "-vgt_cap [num] allocated percentage for GPU resource portion\n",
+    QEMU_ARCH_ALL)
+STEXI
+@item -vgt_cap @var{size}
+@findex -vgt_cap
+Set the allocated GPU resource portion.
+ETEXI
+#endif
+
 DEF("full-screen", 0, QEMU_OPTION_full_screen,
     "-full-screen    start in full screen\n", QEMU_ARCH_ALL)
 STEXI
