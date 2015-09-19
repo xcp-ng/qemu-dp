@@ -1,0 +1,5 @@
+obj-$(CONFIG_VGT) += intel_batchbuffer.o intel_chipset.o
+intel_batchbuffer.o-cflags := -I/usr/include/libdrm
+intel_batchbuffer.o-libs := -ldrm -ldrm_intel
+intel_chipset.o-cflags := -I/usr/include/libdrm
+intel_chipset.o-libs := -ldrm -ldrm_intel
