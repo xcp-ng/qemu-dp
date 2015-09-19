@@ -604,7 +604,7 @@ int xen_pt_msix_init(XenPCIPassthroughState *s, uint32_t base)
     XEN_PT_LOG(d, "mapping physical MSI-X table to %p\n",
                msix->phys_iomem_base);
 
-    memory_region_add_subregion_overlap(&s->bar[bar_index], table_off,
+    memory_region_add_subregion_overlap(&s->bar[bar_index].mr, table_off,
                                         &msix->mmio,
                                         2); /* Priority: pci default + 1 */
 
@@ -632,7 +632,7 @@ void xen_pt_msix_unmap(XenPCIPassthroughState *s)
                + msix->table_offset_adjust);
     }
 
-    memory_region_del_subregion(&s->bar[msix->bar_index], &msix->mmio);
+    memory_region_del_subregion(&s->bar[msix->bar_index].mr, &msix->mmio);
 }
 
 void xen_pt_msix_delete(XenPCIPassthroughState *s)
