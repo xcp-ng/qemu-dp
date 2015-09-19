@@ -1986,14 +1986,8 @@ out:
 int qemu_loadvm_state(QEMUFile *f)
 {
     MigrationIncomingState *mis = migration_incoming_get_current();
-    Error *local_err = NULL;
     unsigned int v;
     int ret;
-
-    if (qemu_savevm_state_blocked(&local_err)) {
-        error_report_err(local_err);
-        return -EINVAL;
-    }
 
     v = qemu_get_be32(f);
     if (v != QEMU_VM_FILE_MAGIC) {
@@ -2207,6 +2201,10 @@ void qmp_xen_save_devices_state(const char *filename, Error **errp)
     saved_vm_running = runstate_is_running();
     vm_stop(RUN_STATE_SAVE_VM);
     global_state_store_running();
+
+    if (qemu_savevm_state_blocked(errp)) {
+        goto the_end;
+    }
 
     ioc = qio_channel_file_new_path(filename, O_WRONLY | O_CREAT, 0660, errp);
     if (!ioc) {
