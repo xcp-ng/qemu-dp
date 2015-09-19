@@ -69,6 +69,7 @@ typedef struct PCIXenPlatformState {
 
     uint16_t class_id;
     uint16_t device_id;
+    uint8_t revision;
 } PCIXenPlatformState;
 
 #define TYPE_XEN_PLATFORM "xen-platform"
@@ -481,6 +482,7 @@ static void xen_platform_realize(PCIDevice *dev, Error **errp)
 
     pci_set_word(pci_conf + PCI_DEVICE_ID, d->device_id);
     pci_set_word(pci_conf + PCI_CLASS_DEVICE, d->class_id);
+    pci_set_byte(pci_conf + PCI_REVISION_ID, d->revision);
 
     platform_ioport_bar_setup(d);
     pci_register_bar(dev, 0, PCI_BASE_ADDRESS_SPACE_IO, &d->bar);
@@ -505,6 +507,7 @@ static Property xen_platform_props[] = {
                        PCI_DEVICE_ID_XEN_PLATFORM),
     DEFINE_PROP_UINT16("class-id", PCIXenPlatformState, class_id,
                        PCI_CLASS_OTHERS << 8 | 0x80),
+    DEFINE_PROP_UINT8("revision", PCIXenPlatformState, revision, 1),
     DEFINE_PROP_END_OF_LIST()
 };
 
@@ -517,7 +520,6 @@ static void xen_platform_class_init(ObjectClass *klass, void *data)
     k->vendor_id = PCI_VENDOR_ID_XEN;
     k->subsystem_vendor_id = PCI_VENDOR_ID_XEN;
     k->subsystem_id = PCI_DEVICE_ID_XEN_PLATFORM;
-    k->revision = 1;
     set_bit(DEVICE_CATEGORY_MISC, dc->categories);
     dc->desc = "XEN platform pci device";
     dc->reset = platform_reset;
