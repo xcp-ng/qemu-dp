@@ -408,7 +408,7 @@ static XenPTBarFlag xen_pt_bar_reg_parse(XenPCIPassthroughState *s,
 
         if ((type & XEN_HOST_PCI_REGION_TYPE_MEM)
             && (type & XEN_HOST_PCI_REGION_TYPE_MEM_64)) {
-            region = &s->bases[index - 1];
+            region = &s->bar[index - 1].region;
             if (region->bar_flag != XEN_PT_BAR_FLAG_UPPER) {
                 return XEN_PT_BAR_FLAG_UPPER;
             }
@@ -456,13 +456,13 @@ static int xen_pt_bar_reg_init(XenPCIPassthroughState *s, XenPTRegInfo *reg,
     }
 
     /* set BAR flag */
-    s->bases[index].bar_flag = xen_pt_bar_reg_parse(s, index);
-    if (s->bases[index].bar_flag == XEN_PT_BAR_FLAG_UNUSED) {
+    s->bar[index].region.bar_flag = xen_pt_bar_reg_parse(s, index);
+    if (s->bar[index].region.bar_flag == XEN_PT_BAR_FLAG_UNUSED) {
         reg_field = XEN_PT_INVALID_REG;
     }
 
     /* set emulate mask depend on BAR flag */
-    switch (s->bases[index].bar_flag) {
+    switch (s->bar[index].region.bar_flag) {
     case XEN_PT_BAR_FLAG_MEM:
         reg->emu_mask = XEN_PT_BAR_MEM_EMU_MASK;
         break;
@@ -507,7 +507,7 @@ static int xen_pt_bar_reg_write(XenPCIPassthroughState *s, XenPTReg *cfg_entry,
                                 uint32_t valid_mask)
 {
     XenPTRegInfo *reg = cfg_entry->reg;
-    XenPTRegion *base = NULL;
+    XenPTRegion *region = NULL;
     PCIDevice *d = &s->dev;
     const PCIIORegion *r;
     uint32_t writable_mask = 0;
@@ -524,11 +524,11 @@ static int xen_pt_bar_reg_write(XenPCIPassthroughState *s, XenPTReg *cfg_entry,
     }
 
     r = &d->io_regions[index];
-    base = &s->bases[index];
-    r_size = xen_pt_get_emul_size(base->bar_flag, r->size);
+    region = &s->bar[index].region;
+    r_size = xen_pt_get_emul_size(region->bar_flag, r->size);
 
     /* set emulate mask and read-only mask values depend on the BAR flag */
-    switch (s->bases[index].bar_flag) {
+    switch (region->bar_flag) {
     case XEN_PT_BAR_FLAG_MEM:
         bar_emu_mask = XEN_PT_BAR_MEM_EMU_MASK;
         if (!r_size) {
@@ -557,7 +557,7 @@ static int xen_pt_bar_reg_write(XenPCIPassthroughState *s, XenPTReg *cfg_entry,
     *data = XEN_PT_MERGE_VALUE(*val, *data, writable_mask);
 
     /* check whether we need to update the virtual region address or not */
-    switch (s->bases[index].bar_flag) {
+    switch (region->bar_flag) {
     case XEN_PT_BAR_FLAG_UPPER:
     case XEN_PT_BAR_FLAG_MEM:
         /* nothing to do */
@@ -581,7 +581,7 @@ static int xen_pt_exp_rom_bar_reg_write(XenPCIPassthroughState *s,
                                         uint32_t dev_value, uint32_t valid_mask)
 {
     XenPTRegInfo *reg = cfg_entry->reg;
-    XenPTRegion *base = NULL;
+    XenPTRegion *region = NULL;
     PCIDevice *d = (PCIDevice *)&s->dev;
     uint32_t writable_mask = 0;
     uint32_t throughable_mask = get_throughable_mask(s, reg, valid_mask);
@@ -590,9 +590,9 @@ static int xen_pt_exp_rom_bar_reg_write(XenPCIPassthroughState *s,
     uint32_t *data = cfg_entry->ptr.word;
 
     r_size = d->io_regions[PCI_ROM_SLOT].size;
-    base = &s->bases[PCI_ROM_SLOT];
+    region = &s->bar[PCI_ROM_SLOT].region;
     /* align memory type resource size */
-    r_size = xen_pt_get_emul_size(base->bar_flag, r_size);
+    r_size = xen_pt_get_emul_size(region->bar_flag, r_size);
 
     /* set emulate mask and read-only mask */
     bar_ro_mask = (reg->ro_mask | (r_size - 1)) & ~PCI_ROM_ADDRESS_ENABLE;
