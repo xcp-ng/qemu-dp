@@ -66,6 +66,17 @@ void qemu_set_fd_handler(int fd,
                        fd_read, fd_write, NULL, opaque);
 }
 
+void qemu_set_fd_handler3(int fd,
+                          IOHandler *fd_read,
+                          IOHandler *fd_write,
+                          IOHandler *fd_exception,
+                          void *opaque)
+{
+    iohandler_init();
+    aio_set_fd_handler3(iohandler_ctx, fd, false,
+                        fd_read, fd_write, fd_exception, NULL, opaque);
+}
+
 void event_notifier_set_handler(EventNotifier *e,
                                 EventNotifierHandler *handler)
 {
