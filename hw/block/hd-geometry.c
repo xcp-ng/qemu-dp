@@ -132,7 +132,8 @@ void hd_geometry_guess(BlockBackend *blk,
         *psecs = geo.sectors;
         *pheads = geo.heads;
         translation = BIOS_ATA_TRANSLATION_NONE;
-    } else if (guess_disk_lchs(blk, &cylinders, &heads, &secs) < 0) {
+    } else if ((ptrans && (*ptrans == BIOS_ATA_TRANSLATION_FORCELBA)) ||
+            guess_disk_lchs(blk, &cylinders, &heads, &secs) < 0) {
         /* no LCHS guess: use a standard physical disk geometry  */
         guess_chs_for_size(blk, pcyls, pheads, psecs);
         translation = hd_bios_chs_auto_trans(*pcyls, *pheads, *psecs);

@@ -40,10 +40,13 @@
 #         15-head, by proportionally scaling up the number of
 #         cylinders/head.
 #
+# @forcelba: Force lba geometry, sectors = 63, heads = 16,
+#            cylinders is set based on the disk size with a max of 16383.
+#
 # Since: 2.0
 ##
 { 'enum': 'BiosAtaTranslation',
-  'data': ['auto', 'none', 'lba', 'large', 'rechs']}
+  'data': ['auto', 'none', 'lba', 'large', 'rechs', 'forcelba']}
 
 ##
 # @FloppyDriveType:
