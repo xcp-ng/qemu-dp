@@ -377,6 +377,7 @@ libattr=""
 xfs=""
 tcg="yes"
 membarrier=""
+vgt="yes"
 vhost_net=""
 vhost_crypto=""
 vhost_scsi=""
@@ -1067,6 +1068,10 @@ for opt do
   ;;
   --enable-sdl-image) sdl_image="yes"
   ;;
+  --disable-vgt) vgt="no"
+  ;;
+  --enable-vgt) vgt="yes"
+  ;;
   --disable-qom-cast-debug) qom_cast_debug="no"
   ;;
   --enable-qom-cast-debug) qom_cast_debug="yes"
@@ -1745,6 +1750,8 @@ disabled with --disable-FEATURE, default is enabled if available:
   auth-pam        PAM access control
   sdl             SDL UI
   sdl-image       SDL Image support for icons
+  --disable-vgt   disable Intel GVT-g technology
+  --enable-vgt    enable Intel GVT-g technology
   gtk             gtk UI
   vte             vte support for the gtk UI
   curses          curses UI
@@ -3160,6 +3167,12 @@ EOF
     sdl_cflags="$sdl_cflags $x11_cflags"
     sdl_libs="$sdl_libs $x11_libs"
   fi
+fi
+
+##########################################
+# Intel GVT-g detection
+if test "$vgt" = "yes" ; then
+  vgt="yes"
 fi
 
 ##########################################
@@ -6483,6 +6496,7 @@ if test "$darwin" = "yes" ; then
 fi
 echo "SDL support       $sdl $(echo_version $sdl $sdlversion)"
 echo "SDL image support $sdl_image"
+echo "Intel GVT-g support $vgt"
 echo "GTK support       $gtk $(echo_version $gtk $gtk_version)"
 echo "GTK GL support    $gtk_gl"
 echo "VTE support       $vte $(echo_version $vte $vteversion)"
@@ -6839,6 +6853,9 @@ if test "$sdl" = "yes" ; then
   if test "$sdl_image" = "yes" ; then
       echo "CONFIG_SDL_IMAGE=y" >> $config_host_mak
   fi
+fi
+if test "$vgt" = "yes" ; then
+  echo "CONFIG_VGT=y" >> $config_host_mak
 fi
 if test "$cocoa" = "yes" ; then
   echo "CONFIG_COCOA=y" >> $config_host_mak
