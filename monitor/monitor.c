@@ -44,10 +44,13 @@ typedef struct MonitorQAPIEventState {
     QDict *data;        /* ... data, see qapi_event_throttle_equal() */
     QEMUTimer *timer;   /* Timer for handling delayed events */
     QDict *qdict;       /* Delayed event (if any) */
+    int64_t last_refill;
+    unsigned int tokens;
 } MonitorQAPIEventState;
 
 typedef struct {
-    int64_t rate;       /* Minimum time (in ns) between two events */
+    int64_t ns_per_token;
+    unsigned int max_tokens;
 } MonitorQAPIEventConf;
 
 /* Shared monitor I/O thread */
@@ -227,12 +230,12 @@ int error_vprintf_unless_qmp(const char *fmt, va_list ap)
 
 static MonitorQAPIEventConf monitor_qapi_event_conf[QAPI_EVENT__MAX] = {
     /* Limit guest-triggerable events to 1 per second */
-    [QAPI_EVENT_RTC_CHANGE]        = { 1000 * SCALE_MS },
-    [QAPI_EVENT_WATCHDOG]          = { 1000 * SCALE_MS },
-    [QAPI_EVENT_BALLOON_CHANGE]    = { 1000 * SCALE_MS },
-    [QAPI_EVENT_QUORUM_REPORT_BAD] = { 1000 * SCALE_MS },
-    [QAPI_EVENT_QUORUM_FAILURE]    = { 1000 * SCALE_MS },
-    [QAPI_EVENT_VSERPORT_CHANGE]   = { 1000 * SCALE_MS },
+    [QAPI_EVENT_RTC_CHANGE]        = { .ns_per_token = 1000 * SCALE_MS, .max_tokens = 12 },
+    [QAPI_EVENT_WATCHDOG]          = { .ns_per_token = 1000 * SCALE_MS, .max_tokens = 1 },
+    [QAPI_EVENT_BALLOON_CHANGE]    = { .ns_per_token = 1000 * SCALE_MS, .max_tokens = 1 },
+    [QAPI_EVENT_QUORUM_REPORT_BAD] = { .ns_per_token = 1000 * SCALE_MS, .max_tokens = 1 },
+    [QAPI_EVENT_QUORUM_FAILURE]    = { .ns_per_token = 1000 * SCALE_MS, .max_tokens = 1 },
+    [QAPI_EVENT_VSERPORT_CHANGE]   = { .ns_per_token = 1000 * SCALE_MS, .max_tokens = 1 },
 };
 
 /*
@@ -271,6 +274,21 @@ static void monitor_qapi_event_emit(QAPIEvent event, QDict *qdict)
 
 static void monitor_qapi_event_handler(void *opaque);
 
+static bool refill_bucket(MonitorQAPIEventState *evstate,
+                          MonitorQAPIEventConf *evconf)
+{
+    int64_t now = qemu_clock_get_ns(monitor_get_event_clock());
+    unsigned int tokens;
+
+    tokens = (now - evstate->last_refill) / evconf->ns_per_token;
+    if (tokens > 0) {
+        evstate->last_refill = now;
+        evstate->tokens = MIN(evconf->max_tokens, evstate->tokens + tokens);
+    }
+
+    return !!evstate->tokens;
+}
+
 /*
  * Queue a new event for emission to Monitor instances,
  * applying any rate limiting if required.
@@ -283,11 +301,11 @@ monitor_qapi_event_queue_no_reenter(QAPIEvent event, QDict *qdict)
 
     assert(event < QAPI_EVENT__MAX);
     evconf = &monitor_qapi_event_conf[event];
-    trace_monitor_protocol_event_queue(event, qdict, evconf->rate);
+    trace_monitor_protocol_event_queue(event, qdict, evconf->ns_per_token, evconf->max_tokens);
 
     qemu_mutex_lock(&monitor_lock);
 
-    if (!evconf->rate) {
+    if (!evconf->ns_per_token) {
         /* Unthrottled event */
         monitor_qapi_event_emit(event, qdict);
     } else {
@@ -295,36 +313,44 @@ monitor_qapi_event_queue_no_reenter(QAPIEvent event, QDict *qdict)
         MonitorQAPIEventState key = { .event = event, .data = data };
 
         evstate = g_hash_table_lookup(monitor_qapi_event_state, &key);
-        assert(!evstate || timer_pending(evstate->timer));
-
-        if (evstate) {
-            /*
-             * Timer is pending for (at least) evconf->rate ns after
-             * last send.  Store event for sending when timer fires,
-             * replacing a prior stored event if any.
-             */
-            qobject_unref(evstate->qdict);
-            evstate->qdict = qobject_ref(qdict);
-        } else {
-            /*
-             * Last send was (at least) evconf->rate ns ago.
-             * Send immediately, and arm the timer to call
-             * monitor_qapi_event_handler() in evconf->rate ns.  Any
-             * events arriving before then will be delayed until then.
-             */
-            int64_t now = qemu_clock_get_ns(monitor_get_event_clock());
-
-            monitor_qapi_event_emit(event, qdict);
-
+        if (!evstate) {
             evstate = g_new(MonitorQAPIEventState, 1);
             evstate->event = event;
             evstate->data = qobject_ref(data);
             evstate->qdict = NULL;
-            evstate->timer = timer_new_ns(monitor_get_event_clock(),
-                                          monitor_qapi_event_handler,
-                                          evstate);
+            evstate->timer = NULL;
+            evstate->last_refill = qemu_clock_get_ns(monitor_get_event_clock());
+            evstate->tokens = evconf->max_tokens;
             g_hash_table_add(monitor_qapi_event_state, evstate);
-            timer_mod_ns(evstate->timer, now + evconf->rate);
+        }
+
+        if (evstate->timer) {
+            /*
+             * A timer means a token is not available.
+             * Replace the previously stored event, it will be emitted when the
+             * timer fires.
+             */
+            qobject_unref(evstate->qdict);
+            evstate->qdict = qobject_ref(qdict);
+        } else {
+            refill_bucket(evstate, evconf);
+            if (evstate->tokens) {
+                evstate->tokens--;
+                monitor_qapi_event_emit(event, qdict);
+            } else {
+                /*
+                 * No tokens available. Store the event and schedule a timer to
+                 * fire when a token becomes available.
+                 */
+                int64_t now = qemu_clock_get_ns(monitor_get_event_clock());
+
+                evstate->qdict = qobject_ref(qdict);
+                evstate->timer = timer_new_ns(monitor_get_event_clock(),
+                                              monitor_qapi_event_handler,
+                                              evstate);
+                timer_mod_ns(evstate->timer, now + evconf->ns_per_token -
+                                             (now - evstate->last_refill));
+            }
         }
     }
 
@@ -385,19 +411,14 @@ static void monitor_qapi_event_handler(void *opaque)
     trace_monitor_protocol_event_handler(evstate->event, evstate->qdict);
     qemu_mutex_lock(&monitor_lock);
 
-    if (evstate->qdict) {
-        int64_t now = qemu_clock_get_ns(monitor_get_event_clock());
+    refill_bucket(evstate, evconf);
+    assert(evstate->tokens > 0);
 
-        monitor_qapi_event_emit(evstate->event, evstate->qdict);
-        qobject_unref(evstate->qdict);
-        evstate->qdict = NULL;
-        timer_mod_ns(evstate->timer, now + evconf->rate);
-    } else {
-        g_hash_table_remove(monitor_qapi_event_state, evstate);
-        qobject_unref(evstate->data);
-        timer_free(evstate->timer);
-        g_free(evstate);
-    }
+    evstate->tokens--;
+    monitor_qapi_event_emit(evstate->event, evstate->qdict);
+    qobject_unref(evstate->qdict);
+    timer_free(evstate->timer);
+    evstate->timer = NULL;
 
     qemu_mutex_unlock(&monitor_lock);
 }
