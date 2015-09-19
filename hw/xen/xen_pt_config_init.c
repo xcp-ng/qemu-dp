@@ -421,6 +421,21 @@ static int xen_pt_bar_reg_init(XenPCIPassthroughState *s, XenPTRegInfo *reg,
         reg_field = XEN_PT_INVALID_REG;
     }
 
+    /* set emulate mask depend on BAR flag */
+    switch (s->bases[index].bar_flag) {
+    case XEN_PT_BAR_FLAG_MEM:
+        reg->emu_mask = XEN_PT_BAR_MEM_EMU_MASK;
+        break;
+    case XEN_PT_BAR_FLAG_IO:
+        reg->emu_mask = XEN_PT_BAR_IO_EMU_MASK;
+        break;
+    case XEN_PT_BAR_FLAG_UPPER:
+        reg->emu_mask = XEN_PT_BAR_ALLF;
+        break;
+    default:
+        break;
+    }
+
     *data = reg_field;
     return 0;
 }
@@ -429,7 +444,6 @@ static int xen_pt_bar_reg_read(XenPCIPassthroughState *s, XenPTReg *cfg_entry,
 {
     XenPTRegInfo *reg = cfg_entry->reg;
     uint32_t valid_emu_mask = 0;
-    uint32_t bar_emu_mask = 0;
     int index;
 
     /* get BAR index */
@@ -442,23 +456,8 @@ static int xen_pt_bar_reg_read(XenPCIPassthroughState *s, XenPTReg *cfg_entry,
     /* use fixed-up value from kernel sysfs */
     *value = base_address_with_flags(&s->real_device.io_regions[index]);
 
-    /* set emulate mask depend on BAR flag */
-    switch (s->bases[index].bar_flag) {
-    case XEN_PT_BAR_FLAG_MEM:
-        bar_emu_mask = XEN_PT_BAR_MEM_EMU_MASK;
-        break;
-    case XEN_PT_BAR_FLAG_IO:
-        bar_emu_mask = XEN_PT_BAR_IO_EMU_MASK;
-        break;
-    case XEN_PT_BAR_FLAG_UPPER:
-        bar_emu_mask = XEN_PT_BAR_ALLF;
-        break;
-    default:
-        break;
-    }
-
     /* emulate BAR */
-    valid_emu_mask = bar_emu_mask & valid_mask;
+    valid_emu_mask = reg->emu_mask & valid_mask;
     *value = XEN_PT_MERGE_VALUE(*value, *cfg_entry->ptr.word, ~valid_emu_mask);
 
     return 0;

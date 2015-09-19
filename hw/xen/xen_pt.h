@@ -31,7 +31,7 @@ void xen_pt_log(const PCIDevice *d, const char *f, ...) GCC_FMT_ATTR(2, 3);
 /* Helper */
 #define XEN_PFN(x) ((x) >> XC_PAGE_SHIFT)
 
-typedef const struct XenPTRegInfo XenPTRegInfo;
+typedef struct XenPTRegInfo XenPTRegInfo;
 typedef struct XenPTReg XenPTReg;
 
 typedef struct XenPCIPassthroughState XenPCIPassthroughState;
