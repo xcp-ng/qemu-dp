@@ -1302,6 +1302,7 @@ static uint16_t nvme_identify_ctrl(NvmeCtrl *n, NvmeCmd *cmd, NvmeRequest *req)
 static uint16_t nvme_identify_ns(NvmeCtrl *n, NvmeCmd *cmd, NvmeRequest *req)
 {
     NvmeNamespace *ns;
+    NvmeIdNs *id_ns, invalid_ns_id = {0};
     uint32_t nsid = le32_to_cpu(cmd->nsid);
 
     trace_nvme_identify_ns(nsid);
@@ -1312,9 +1313,13 @@ static uint16_t nvme_identify_ns(NvmeCtrl *n, NvmeCmd *cmd, NvmeRequest *req)
     }
 
     ns = n->namespaces[nsid - 1];
+    if (ns) {
+        id_ns = &ns->id_ns;
+    } else {
+        id_ns = &invalid_ns_id;
+    }
 
-    return nvme_dma_read(n, (uint8_t *) &ns->id_ns, sizeof(ns->id_ns), cmd,
-        req);
+    return nvme_dma_read(n, (uint8_t *) id_ns, sizeof(*id_ns), cmd, req);
 }
 
 static uint16_t nvme_identify_ns_list(NvmeCtrl *n, NvmeCmd *cmd,
@@ -1330,7 +1335,7 @@ static uint16_t nvme_identify_ns_list(NvmeCtrl *n, NvmeCmd *cmd,
 
     list = g_malloc0(data_len);
     for (i = 0; i < n->num_namespaces; i++) {
-        if (i < min_nsid) {
+        if (i < min_nsid || !n->namespaces[i]) {
             continue;
         }
         list[j++] = cpu_to_le32(i + 1);
@@ -1861,7 +1866,9 @@ static void nvme_clear_ctrl(NvmeCtrl *n)
     int i;
 
     for (i = 0; i < n->num_namespaces; i++) {
-        blk_drain(n->namespaces[i]->conf.blk);
+        if (n->namespaces[i]) {
+            blk_drain(n->namespaces[i]->conf.blk);
+        }
     }
 
     for (i = 0; i < n->params.num_queues; i++) {
@@ -1886,7 +1893,9 @@ static void nvme_clear_ctrl(NvmeCtrl *n)
     }
 
     for (i = 0; i < n->num_namespaces; i++) {
-        blk_flush(n->namespaces[i]->conf.blk);
+        if (n->namespaces[i]) {
+            blk_flush(n->namespaces[i]->conf.blk);
+        }
     }
 
     n->bar.cc = 0;
@@ -2464,8 +2473,9 @@ int nvme_register_namespace(NvmeCtrl *n, NvmeNamespace *ns, Error **errp)
     trace_nvme_register_namespace(nsid);
 
     n->namespaces[nsid - 1] = ns;
-    n->num_namespaces++;
-    n->id_ctrl.nn++;
+    if (nsid > n->num_namespaces)
+        n->num_namespaces = nsid;
+    n->id_ctrl.nn = n->num_namespaces;
 
     return 0;
 }
