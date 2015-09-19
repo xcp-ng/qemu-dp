@@ -166,15 +166,11 @@ static void unplug_disks(PCIBus *b, PCIDevice *d, void *opaque)
         break;
 
     case PCI_CLASS_STORAGE_SCSI:
+    case PCI_CLASS_STORAGE_EXPRESS:
         if (!aux) {
             object_unparent(OBJECT(d));
         }
         break;
-
-    case PCI_CLASS_STORAGE_EXPRESS:
-        if (flags & UNPLUG_NVME_DISKS) {
-            object_unparent(OBJECT(d));
-        }
 
     default:
         break;
