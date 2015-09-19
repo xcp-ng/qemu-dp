@@ -260,7 +260,7 @@ static void xen_pt_pci_write_config(PCIDevice *d, uint32_t addr,
             chk |= (uint32_t)~PCI_ROM_ADDRESS_MASK;
 
         if ((chk != XEN_PT_BAR_ALLF) &&
-            (s->bases[index].bar_flag == XEN_PT_BAR_FLAG_UNUSED)) {
+            (s->bar[index].region.bar_flag == XEN_PT_BAR_FLAG_UNUSED)) {
             XEN_PT_WARN(d, "Guest attempt to set address to unused "
                         "Base Address Register. (addr: 0x%02x, len: %d)\n",
                         addr, len);
@@ -417,30 +417,148 @@ out:
 
 /* register regions */
 
-static uint64_t xen_pt_bar_read(void *o, hwaddr addr,
-                                unsigned size)
+static uint64_t xen_pt_mr_read(void *o, hwaddr addr, unsigned size)
 {
-    PCIDevice *d = o;
-    /* if this function is called, that probably means that there is a
-     * misconfiguration of the IOMMU. */
-    XEN_PT_ERR(d, "Should not read BAR through QEMU. @0x"TARGET_FMT_plx"\n",
-               addr);
-    return 0;
+    XenPTBAR *bar = o;
+    uint64_t value;
+
+    bar->read(bar, addr, size, &value);
+
+    return value;
 }
-static void xen_pt_bar_write(void *o, hwaddr addr, uint64_t val,
-                             unsigned size)
+
+static void xen_pt_mr_write(void *o, hwaddr addr, uint64_t value,
+                            unsigned size)
 {
-    PCIDevice *d = o;
-    /* Same comment as xen_pt_bar_read function */
-    XEN_PT_ERR(d, "Should not write BAR through QEMU. @0x"TARGET_FMT_plx"\n",
-               addr);
+    XenPTBAR *bar = o;
+
+    bar->write(bar, addr, size, value);
 }
 
 static const MemoryRegionOps ops = {
     .endianness = DEVICE_NATIVE_ENDIAN,
-    .read = xen_pt_bar_read,
-    .write = xen_pt_bar_write,
+    .read = xen_pt_mr_read,
+    .write = xen_pt_mr_write,
 };
+
+static void xen_pt_io_bar_update(struct XenPCIPassthroughState *s,
+                                 unsigned int index,
+                                 MemoryRegionSection *sec, int op)
+{
+    PCIDevice *d = &s->dev;
+    uint32_t guest_port = sec->offset_within_address_space;
+    uint32_t machine_port = s->bar[index].region.access.pio_base;
+    uint32_t range = int128_get64(sec->size);
+    int rc;
+
+    assert(d->io_regions[index].type & PCI_BASE_ADDRESS_SPACE_IO);
+
+    XEN_PT_LOG(d, "%s BAR[%d]: (IO) %04x -> %04x [%04x]\n",
+               op == DPCI_ADD_MAPPING ? "MAP" : "UNMAP",
+               index, guest_port, machine_port, range);
+    rc = xc_domain_ioport_mapping(xen_xc, xen_domid, guest_port,
+                                  machine_port, range, op);
+    if (rc) {
+        XEN_PT_ERR(d, "%s ioport mapping failed! (err: %i)\n",
+                   op == DPCI_ADD_MAPPING ? "create new" : "remove old",
+                   errno);
+    }
+}
+
+static void xen_pt_io_bar_map(XenPTBAR *bar,
+                              MemoryRegionSection *sec)
+{
+    struct XenPCIPassthroughState *s = bar->s;
+    unsigned int index = bar - &s->bar[0];
+
+    xen_pt_io_bar_update(s, index, sec, DPCI_ADD_MAPPING);
+}
+
+static void xen_pt_io_bar_unmap(XenPTBAR *bar,
+                                MemoryRegionSection *sec)
+{
+    struct XenPCIPassthroughState *s = bar->s;
+    unsigned int index = bar - &s->bar[0];
+
+    xen_pt_io_bar_update(s, index, sec, DPCI_REMOVE_MAPPING);
+}
+
+static void xen_pt_io_bar_read(XenPTBAR *bar, hwaddr addr,
+                               unsigned int size, uint64_t *value)
+{
+}
+
+static void xen_pt_io_bar_write(XenPTBAR *bar, hwaddr addr,
+                                unsigned int size, uint64_t value)
+{
+}
+
+static void xen_pt_memory_bar_update(struct XenPCIPassthroughState *s,
+                                     unsigned int index,
+                                     MemoryRegionSection *sec, int op)
+{
+    PCIDevice *d = &s->dev;
+    pcibus_t guest_addr = sec->offset_within_address_space;
+    pcibus_t machine_addr = s->bar[index].region.access.maddr +
+        sec->offset_within_region;
+    pcibus_t size = int128_get64(sec->size);
+    int rc;
+
+    assert(!(d->io_regions[index].type & PCI_BASE_ADDRESS_SPACE_IO));
+
+    XEN_PT_LOG(d, "%s BAR[%d]: (MEM) %p -> %p [%p]\n",
+               op == DPCI_ADD_MAPPING ? "MAP" : "UNMAP",
+               index, (void *)guest_addr, (void *)machine_addr,
+               (void *)size);
+    rc = xc_domain_memory_mapping(xen_xc, xen_domid,
+                                  XEN_PFN(guest_addr + XC_PAGE_SIZE - 1),
+                                  XEN_PFN(machine_addr + XC_PAGE_SIZE - 1),
+                                  XEN_PFN(size + XC_PAGE_SIZE - 1),
+                                  op);
+    if (rc) {
+        XEN_PT_ERR(d, "%s mem mapping failed! (err: %i)\n",
+                   op == DPCI_ADD_MAPPING ? "create new" : "remove old",
+                   errno);
+    }
+}
+
+static void xen_pt_memory_bar_map(XenPTBAR *bar,
+                                  MemoryRegionSection *sec)
+{
+    struct XenPCIPassthroughState *s = bar->s;
+    unsigned int index = bar - &s->bar[0];
+
+    xen_pt_memory_bar_update(s, index, sec, DPCI_ADD_MAPPING);
+}
+
+static void xen_pt_memory_bar_unmap(XenPTBAR *bar,
+                                    MemoryRegionSection *sec)
+{
+    struct XenPCIPassthroughState *s = bar->s;
+    unsigned int index = bar - &s->bar[0];
+
+    xen_pt_memory_bar_update(s, index, sec, DPCI_REMOVE_MAPPING);
+}
+
+static void xen_pt_memory_bar_read(XenPTBAR *bar, hwaddr addr,
+                                   unsigned int size, uint64_t *value)
+{
+    PCIDevice *d = &bar->s->dev;
+    /* if this function is called, that probably means that there is a
+     * misconfiguration of the IOMMU. */
+    XEN_PT_ERR(d, "Should not read BAR through QEMU. @0x"TARGET_FMT_plx"\n",
+               addr);
+}
+
+static void xen_pt_memory_bar_write(XenPTBAR *bar, hwaddr addr,
+                                    unsigned int size, uint64_t value)
+{
+    PCIDevice *d = &bar->s->dev;
+    /* if this function is called, that probably means that there is a
+     * misconfiguration of the IOMMU. */
+    XEN_PT_ERR(d, "Should not write BAR through QEMU. @0x"TARGET_FMT_plx"\n",
+               addr);
+}
 
 static int xen_pt_register_regions(XenPCIPassthroughState *s, uint16_t *cmd)
 {
@@ -456,7 +574,9 @@ static int xen_pt_register_regions(XenPCIPassthroughState *s, uint16_t *cmd)
             continue;
         }
 
-        s->bases[i].access.u = r->base_addr;
+        s->bar[i].s = s;
+        s->bar[i].region.access.u = r->base_addr;
+        s->bar[i].region.size = r->base_addr;
 
         if (r->type & XEN_HOST_PCI_REGION_TYPE_IO) {
             type = PCI_BASE_ADDRESS_SPACE_IO;
@@ -472,9 +592,21 @@ static int xen_pt_register_regions(XenPCIPassthroughState *s, uint16_t *cmd)
             *cmd |= PCI_COMMAND_MEMORY;
         }
 
-        memory_region_init_io(&s->bar[i], OBJECT(s), &ops, &s->dev,
+        if (type == PCI_BASE_ADDRESS_SPACE_IO) {
+            s->bar[i].map = xen_pt_io_bar_map;
+            s->bar[i].unmap = xen_pt_io_bar_unmap;
+            s->bar[i].read = xen_pt_io_bar_read;
+            s->bar[i].write = xen_pt_io_bar_write;
+        } else {
+            s->bar[i].map = xen_pt_memory_bar_map;
+            s->bar[i].unmap = xen_pt_memory_bar_unmap;
+            s->bar[i].read = xen_pt_memory_bar_read;
+            s->bar[i].write = xen_pt_memory_bar_write;
+        }
+
+        memory_region_init_io(&s->bar[i].mr, OBJECT(s), &ops, &s->bar[i],
                               "xen-pci-pt-bar", r->size);
-        pci_register_bar(&s->dev, i, type, &s->bar[i]);
+        pci_register_bar(&s->dev, i, type, &s->bar[i].mr);
 
         XEN_PT_LOG(&s->dev, "IO region %i registered (size=0x%08"PRIx64
                    " base_addr=0x%08"PRIx64" type: %#x)\n",
@@ -494,19 +626,27 @@ static int xen_pt_register_regions(XenPCIPassthroughState *s, uint16_t *cmd)
             xen_host_pci_set_long(d, PCI_ROM_ADDRESS, bar_data);
         }
 
-        s->bases[PCI_ROM_SLOT].access.maddr = d->rom.base_addr;
+        s->bar[PCI_ROM_SLOT].s = s;
+        s->bar[PCI_ROM_SLOT].region.access.maddr = d->rom.base_addr;
+        s->bar[PCI_ROM_SLOT].region.size = d->rom.size;
+        s->bar[PCI_ROM_SLOT].map = xen_pt_memory_bar_map;
+        s->bar[PCI_ROM_SLOT].unmap = xen_pt_memory_bar_unmap;
+        s->bar[PCI_ROM_SLOT].read = xen_pt_memory_bar_read;
+        s->bar[PCI_ROM_SLOT].write = xen_pt_memory_bar_write;
 
-        memory_region_init_io(&s->rom, OBJECT(s), &ops, &s->dev,
-                              "xen-pci-pt-rom", d->rom.size);
-        pci_register_bar(&s->dev, PCI_ROM_SLOT, PCI_BASE_ADDRESS_MEM_PREFETCH,
-                         &s->rom);
+        memory_region_init_io(&s->bar[PCI_ROM_SLOT].mr, OBJECT(s), &ops,
+                              &s->bar[PCI_ROM_SLOT], "xen-pci-pt-rom",
+                              d->rom.size);
+        pci_register_bar(&s->dev, PCI_ROM_SLOT,
+                         PCI_BASE_ADDRESS_MEM_PREFETCH,
+                         &s->bar[PCI_ROM_SLOT].mr);
 
         XEN_PT_LOG(&s->dev, "Expansion ROM registered (size=0x%08"PRIx64
                    " base_addr=0x%08"PRIx64")\n",
                    d->rom.size, d->rom.base_addr);
     }
 
-    xen_pt_register_vga_regions(d);
+    xen_pt_register_vga_regions(s);
     return 0;
 }
 
@@ -516,13 +656,10 @@ static int xen_pt_bar_from_region(XenPCIPassthroughState *s, MemoryRegion *mr)
 {
     int i = 0;
 
-    for (i = 0; i < PCI_NUM_REGIONS - 1; i++) {
-        if (mr == &s->bar[i]) {
+    for (i = 0; i < PCI_NUM_REGIONS; i++) {
+        if (mr == &s->bar[i].mr) {
             return i;
         }
-    }
-    if (mr == &s->rom) {
-        return PCI_ROM_SLOT;
     }
     return -1;
 }
@@ -579,64 +716,43 @@ static void xen_pt_region_update(XenPCIPassthroughState *s,
 {
     PCIDevice *d = &s->dev;
     MemoryRegion *mr = sec->mr;
-    int bar = -1;
-    int rc;
-    int op = adding ? DPCI_ADD_MAPPING : DPCI_REMOVE_MAPPING;
+    int index = -1;
     struct CheckBarArgs args = {
         .s = s,
         .addr = sec->offset_within_address_space,
         .size = int128_get64(sec->size),
         .rc = false,
     };
+    XenPTBAR *bar;
 
-    bar = xen_pt_bar_from_region(s, mr);
-    if (bar == -1 && (!s->msix || &s->msix->mmio != mr)) {
+    index = xen_pt_bar_from_region(s, mr);
+    if (index == -1 && (!s->msix || &s->msix->mmio != mr)) {
         return;
     }
 
     if (s->msix && &s->msix->mmio == mr) {
         if (adding) {
             s->msix->mmio_base_addr = sec->offset_within_address_space;
-            rc = xen_pt_msix_update_remap(s, s->msix->bar_index);
+            xen_pt_msix_update_remap(s, s->msix->bar_index);
         }
         return;
     }
 
-    args.type = d->io_regions[bar].type;
+    args.type = d->io_regions[index].type;
     pci_for_each_device(pci_get_bus(d), pci_dev_bus_num(d),
                         xen_pt_check_bar_overlap, &args);
     if (args.rc) {
         XEN_PT_WARN(d, "Region: %d (addr: %#"FMT_PCIBUS
                     ", len: %#"FMT_PCIBUS") is overlapped.\n",
-                    bar, sec->offset_within_address_space,
+                    index, sec->offset_within_address_space,
                     int128_get64(sec->size));
     }
 
-    if (d->io_regions[bar].type & PCI_BASE_ADDRESS_SPACE_IO) {
-        uint32_t guest_port = sec->offset_within_address_space;
-        uint32_t machine_port = s->bases[bar].access.pio_base;
-        uint32_t size = int128_get64(sec->size);
-        rc = xc_domain_ioport_mapping(xen_xc, xen_domid,
-                                      guest_port, machine_port, size,
-                                      op);
-        if (rc) {
-            XEN_PT_ERR(d, "%s ioport mapping failed! (err: %i)\n",
-                       adding ? "create new" : "remove old", errno);
-        }
+    bar = &s->bar[index];
+    if (adding) {
+        bar->map(bar, sec);
     } else {
-        pcibus_t guest_addr = sec->offset_within_address_space;
-        pcibus_t machine_addr = s->bases[bar].access.maddr
-            + sec->offset_within_region;
-        pcibus_t size = int128_get64(sec->size);
-        rc = xc_domain_memory_mapping(xen_xc, xen_domid,
-                                      XEN_PFN(guest_addr + XC_PAGE_SIZE - 1),
-                                      XEN_PFN(machine_addr + XC_PAGE_SIZE - 1),
-                                      XEN_PFN(size + XC_PAGE_SIZE - 1),
-                                      op);
-        if (rc) {
-            XEN_PT_ERR(d, "%s mem mapping failed! (err: %i)\n",
-                       adding ? "create new" : "remove old", errno);
-        }
+        bar->unmap(bar, sec);
     }
 }
 
@@ -703,7 +819,6 @@ xen_igd_passthrough_isa_bridge_create(XenPCIPassthroughState *s,
 static void xen_pt_destroy(PCIDevice *d) {
 
     XenPCIPassthroughState *s = XEN_PT_DEVICE(d);
-    XenHostPCIDevice *host_dev = &s->real_device;
     uint8_t machine_irq = s->machine_irq;
     uint8_t intx;
     int rc;
@@ -750,7 +865,7 @@ static void xen_pt_destroy(PCIDevice *d) {
     /* delete all emulated config registers */
     xen_pt_config_delete(s);
 
-    xen_pt_unregister_vga_regions(host_dev);
+    xen_pt_unregister_vga_regions(s);
 
     if (s->listener_set) {
         memory_listener_unregister(&s->memory_listener);
@@ -925,10 +1040,9 @@ out:
     return;
 
 err_out:
-    for (i = 0; i < PCI_ROM_SLOT; i++) {
-        object_unparent(OBJECT(&s->bar[i]));
+    for (i = 0; i < PCI_NUM_REGIONS; i++) {
+        object_unparent(OBJECT(&s->bar[i].mr));
     }
-    object_unparent(OBJECT(&s->rom));
 
     xen_pt_destroy(d);
     assert(rc);
