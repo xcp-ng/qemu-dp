@@ -154,7 +154,8 @@ static void unplug_disks(PCIBus *b, PCIDevice *d, void *opaque)
         !(flags & UNPLUG_IDE_SCSI_DISKS);
 
     /* We have to ignore passthrough devices */
-    if (!strcmp(d->name, "xen-pci-passthrough")) {
+    if (!strcmp(d->name, "xen-pci-passthrough") ||
+            !strcmp(d->name, "xen-platform")) {
         return;
     }
 
