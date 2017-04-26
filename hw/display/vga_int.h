@@ -47,6 +47,7 @@
 #define VBE_DISPI_INDEX_Y_OFFSET        0x9
 #define VBE_DISPI_INDEX_NB              0xa /* size of vbe_regs[] */
 #define VBE_DISPI_INDEX_VIDEO_MEMORY_64K 0xa /* read-only, not in vbe_regs */
+#define VBE_DISPI_INDEX_LFB_ADDRESS_H    0xb /* read-only, trad compat */
 
 #define VBE_DISPI_ID0                   0xB0C0
 #define VBE_DISPI_ID1                   0xB0C1
@@ -137,6 +138,8 @@ typedef struct VGACommonState {
     uint32_t vbe_line_offset;
     uint32_t vbe_bank_mask;
     int vbe_mapped;
+    /* non-bochs vbe extensions */
+    int vbe_extended;
     /* display refresh support */
     QemuConsole *con;
     uint32_t font_offsets[2];
