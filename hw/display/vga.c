@@ -26,6 +26,7 @@
 #include "qemu/units.h"
 #include "sysemu/reset.h"
 #include "qapi/error.h"
+#include "hw/i386/pc.h"
 #include "hw/display/vga.h"
 #include "hw/pci/pci.h"
 #include "vga_int.h"
@@ -725,6 +726,9 @@ uint32_t vbe_ioport_read_data(void *opaque, uint32_t addr)
         }
     } else if (s->vbe_index == VBE_DISPI_INDEX_VIDEO_MEMORY_64K) {
         val = s->vbe_size / (64 * KiB);
+    } else if (s->vbe_extended &&
+               s->vbe_index == VBE_DISPI_INDEX_LFB_ADDRESS_H) {
+        val = s->vram.addr >> 16;
     } else {
         val = 0;
     }
@@ -2300,6 +2304,9 @@ void vga_init(VGACommonState *s, Object *obj, MemoryRegion *address_space,
         portio_list_init(&s->vbe_port_list, obj, vbe_ports, s, "vbe");
         portio_list_add(&s->vbe_port_list, address_space_io, 0x1ce);
     }
+    s->vbe_extended = object_property_get_bool(qdev_get_machine(),
+                                               PC_MACHINE_TRAD_COMPAT,
+                                               &error_abort);
 }
 
 void vga_init_vbe(VGACommonState *s, Object *obj, MemoryRegion *system_memory)
