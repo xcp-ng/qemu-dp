@@ -107,6 +107,8 @@ typedef struct VGACommonState {
     uint32_t vbe_line_offset;
     uint32_t vbe_bank_mask;
     int vbe_mapped;
+    /* non-bochs vbe extensions */
+    int vbe_extended;
     /* display refresh support */
     QemuConsole *con;
     uint32_t font_offsets[2];
