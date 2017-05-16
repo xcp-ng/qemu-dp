@@ -2223,6 +2223,20 @@ static void pc_machine_set_pit(Object *obj, bool value, Error **errp)
     pcms->pit = value;
 }
 
+static bool pc_machine_get_trad_compat(Object *obj, Error **errp)
+{
+    PCMachineState *pcms = PC_MACHINE(obj);
+
+    return pcms->is_trad_compat;
+}
+
+static void pc_machine_set_trad_compat(Object *obj, bool value, Error **errp)
+{
+    PCMachineState *pcms = PC_MACHINE(obj);
+
+    pcms->is_trad_compat = value;
+}
+
 static void pc_machine_initfn(Object *obj)
 {
     PCMachineState *pcms = PC_MACHINE(obj);
@@ -2237,6 +2251,7 @@ static void pc_machine_initfn(Object *obj)
     pcms->smbus = true;
     pcms->sata = true;
     pcms->pit = true;
+    pcms->is_trad_compat = false;
 }
 
 static void pc_machine_reset(void)
@@ -2397,6 +2412,9 @@ static void pc_machine_class_init(ObjectClass *oc, void *data)
 
     object_class_property_add_bool(oc, PC_MACHINE_PIT,
         pc_machine_get_pit, pc_machine_set_pit, &error_abort);
+
+    object_class_property_add_bool(oc, PC_MACHINE_TRAD_COMPAT,
+        pc_machine_get_trad_compat, pc_machine_set_trad_compat, &error_abort);
 }
 
 static const TypeInfo pc_machine_info = {
