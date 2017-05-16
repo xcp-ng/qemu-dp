@@ -56,6 +56,8 @@ struct PCMachineState {
 
     /* ACPI Memory hotplug IO base address */
     hwaddr memhp_io_base;
+
+    bool is_trad_compat;
 };
 
 #define PC_MACHINE_ACPI_DEVICE_PROP "acpi-device"
@@ -65,6 +67,7 @@ struct PCMachineState {
 #define PC_MACHINE_SMBUS            "smbus"
 #define PC_MACHINE_SATA             "sata"
 #define PC_MACHINE_PIT              "pit"
+#define PC_MACHINE_TRAD_COMPAT      "trad-compat"
 
 /**
  * PCMachineClass:
