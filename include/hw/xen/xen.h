@@ -48,6 +48,9 @@ void xen_hvm_modified_memory(ram_addr_t start, ram_addr_t length);
 
 void xen_register_framebuffer(struct MemoryRegion *mr);
 
+void xen_unassigned_access(hwaddr addr, bool is_write, void *val,
+                           unsigned size);
+
 #define VRAM_RESERVED_ADDRESS	0xff000000
 
 #endif /* QEMU_HW_XEN_H */
