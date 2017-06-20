@@ -24,6 +24,7 @@
 #include "sysemu/xen-mapcache.h"
 #include "trace.h"
 #include "exec/address-spaces.h"
+#include "exec/ram_addr.h"
 
 #include <xen/hvm/ioreq.h>
 #include <xen/hvm/params.h>
@@ -42,6 +43,7 @@
 static MemoryRegion ram_memory, ram_640k, ram_lo, ram_hi;
 static MemoryRegion *framebuffer;
 static bool xen_in_migration;
+static bool allow_unassigned;
 
 /* Compatibility with older version */
 
@@ -1432,6 +1434,10 @@ void xen_hvm_init(PCMachineState *pcms, MemoryRegion **ram_memory)
     /* Disable ACPI build because Xen handles it */
     pcms->acpi_build_enabled = false;
 
+    /* Allow unassigned memory accesses if requested */
+    allow_unassigned = object_property_get_bool(qdev_get_machine(),
+                                                PC_MACHINE_ALLOW_UNASSIGNED,
+                                                &error_abort);
     return;
 
 err:
@@ -1519,5 +1525,36 @@ void qmp_xen_set_global_dirty_log(bool enable, Error **errp)
         memory_global_dirty_log_start();
     } else {
         memory_global_dirty_log_stop();
+    }
+}
+
+void xen_unassigned_access(hwaddr addr, bool is_write, void *val,
+                           unsigned size)
+{
+    uint8_t *host;
+
+    if (!allow_unassigned) {
+        return;
+    }
+
+    /* XXX How do we know if this is for DMA? Assume it is for now... */
+    host = xen_map_cache(addr, 0, 0, true);
+    if (!host) {
+         error_report("unhandled unassigned %s: addr=0x%lx size=%u",
+                      is_write ? "write": "read", addr, size);
+         if (!is_write) {
+             memset(val, 0xff, size);
+         }
+         return;
+    }
+
+    DPRINTF("unassigned %s: addr=0x%lx host=0x%lx size=%u\n",
+            is_write ? "write": "read", addr, (uint64_t)host, size);
+
+    if (is_write) {
+        memcpy(host, val, size);
+        cpu_physical_memory_set_dirty_range(addr, size, 1 << DIRTY_MEMORY_MIGRATION);
+    } else {
+        memcpy(val, host, size);
     }
 }
