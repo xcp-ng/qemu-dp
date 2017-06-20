@@ -58,6 +58,7 @@ struct PCMachineState {
     hwaddr memhp_io_base;
 
     bool is_trad_compat;
+    bool allow_unassigned;
 };
 
 #define PC_MACHINE_ACPI_DEVICE_PROP "acpi-device"
@@ -68,6 +69,7 @@ struct PCMachineState {
 #define PC_MACHINE_SATA             "sata"
 #define PC_MACHINE_PIT              "pit"
 #define PC_MACHINE_TRAD_COMPAT      "trad-compat"
+#define PC_MACHINE_ALLOW_UNASSIGNED "allow-unassigned"
 
 /**
  * PCMachineClass:
