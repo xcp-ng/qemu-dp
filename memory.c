@@ -1257,6 +1257,11 @@ static uint64_t unassigned_mem_read(void *opaque, hwaddr addr,
 #ifdef DEBUG_UNASSIGNED
     printf("Unassigned mem read " TARGET_FMT_plx "\n", addr);
 #endif
+    if (xen_enabled()) {
+        uint64_t val;
+        xen_unassigned_access(addr, false, &val, size);
+        return val;
+    }
     return 0;
 }
 
@@ -1266,6 +1271,9 @@ static void unassigned_mem_write(void *opaque, hwaddr addr,
 #ifdef DEBUG_UNASSIGNED
     printf("Unassigned mem write " TARGET_FMT_plx " = 0x%"PRIx64"\n", addr, val);
 #endif
+    if (xen_enabled()) {
+        xen_unassigned_access(addr, true, &val, size);
+    }
 }
 
 static bool unassigned_mem_accepts(void *opaque, hwaddr addr,
