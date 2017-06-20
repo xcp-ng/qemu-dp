@@ -2129,6 +2129,21 @@ static void pc_machine_set_trad_compat(Object *obj, bool value, Error **errp)
     pcms->is_trad_compat = value;
 }
 
+static bool pc_machine_get_allow_unassigned(Object *obj, Error **errp)
+{
+    PCMachineState *pcms = PC_MACHINE(obj);
+
+    return pcms->allow_unassigned;
+}
+
+static void pc_machine_set_allow_unassigned(Object *obj, bool value,
+                                            Error **errp)
+{
+    PCMachineState *pcms = PC_MACHINE(obj);
+
+    pcms->allow_unassigned = value;
+}
+
 static void pc_machine_initfn(Object *obj)
 {
     PCMachineState *pcms = PC_MACHINE(obj);
@@ -2145,6 +2160,7 @@ static void pc_machine_initfn(Object *obj)
     pcms->sata_enabled = true;
     pcms->pit_enabled = true;
     pcms->is_trad_compat = false;
+    pcms->allow_unassigned = false;
 
     pc_system_flash_create(pcms);
 }
@@ -2264,6 +2280,10 @@ static void pc_machine_class_init(ObjectClass *oc, void *data)
 
     object_class_property_add_bool(oc, PC_MACHINE_TRAD_COMPAT,
         pc_machine_get_trad_compat, pc_machine_set_trad_compat, &error_abort);
+
+    object_class_property_add_bool(oc, PC_MACHINE_ALLOW_UNASSIGNED,
+        pc_machine_get_allow_unassigned, pc_machine_set_allow_unassigned,
+        &error_abort);
 }
 
 static const TypeInfo pc_machine_info = {
