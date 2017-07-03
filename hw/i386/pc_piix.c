@@ -414,6 +414,7 @@ static void pc_xen_hvm_init(MachineState *machine)
 
 static void pc_i440fx_machine_options(MachineClass *m)
 {
+    HotplugHandlerClass *hc = HOTPLUG_HANDLER_CLASS(m);
     PCMachineClass *pcmc = PC_MACHINE_CLASS(m);
     pcmc->default_nic_model = "e1000";
 
@@ -422,6 +423,8 @@ static void pc_i440fx_machine_options(MachineClass *m)
     m->default_machine_opts = "firmware=bios-256k.bin";
     m->default_display = "std";
     machine_class_allow_dynamic_sysbus_dev(m, TYPE_RAMFB_DEVICE);
+
+    hc->unplug_request = NULL;
 }
 
 static void pc_i440fx_4_2_machine_options(MachineClass *m)
