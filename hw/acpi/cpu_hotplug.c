@@ -72,6 +72,18 @@ static void acpi_set_cpu_present_bit(AcpiCpuHotplug *g, CPUState *cpu,
     g->sts[cpu_id / 8] |= (1 << (cpu_id % 8));
 }
 
+static void acpi_clear_cpu_present_bit(AcpiCpuHotplug *g, CPUState *cpu)
+{
+    CPUClass *k = CPU_GET_CLASS(cpu);
+    int64_t cpu_id;
+
+    cpu_id = k->get_arch_id(cpu);
+    if ((cpu_id / 8) >= ACPI_GPE_PROC_LEN)
+        return;
+
+    g->sts[cpu_id / 8] &= ~(1 << (cpu_id % 8));
+}
+
 void legacy_acpi_cpu_plug_cb(HotplugHandler *hotplug_dev,
                              AcpiCpuHotplug *g, DeviceState *dev, Error **errp)
 {
@@ -79,6 +91,13 @@ void legacy_acpi_cpu_plug_cb(HotplugHandler *hotplug_dev,
     if (*errp != NULL) {
         return;
     }
+    acpi_send_event(DEVICE(hotplug_dev), ACPI_CPU_HOTPLUG_STATUS);
+}
+
+void legacy_acpi_cpu_unplug_cb(HotplugHandler *hotplug_dev,
+                               AcpiCpuHotplug *g, DeviceState *dev)
+{
+    acpi_clear_cpu_present_bit(g, CPU(dev));
     acpi_send_event(DEVICE(hotplug_dev), ACPI_CPU_HOTPLUG_STATUS);
 }
 
