@@ -1720,7 +1720,8 @@ static void pc_cpu_unplug_cb(HotplugHandler *hotplug_dev,
     x86ms->boot_cpus--;
     /* Update the number of CPUs in CMOS */
     rtc_set_cpus_count(x86ms->rtc, x86ms->boot_cpus);
-    fw_cfg_modify_i16(x86ms->fw_cfg, FW_CFG_NB_CPUS, x86ms->boot_cpus);
+    if (x86ms->fw_cfg)
+        fw_cfg_modify_i16(x86ms->fw_cfg, FW_CFG_NB_CPUS, x86ms->boot_cpus);
  out:
     error_propagate(errp, local_err);
 }
