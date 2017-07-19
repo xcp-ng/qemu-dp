@@ -6539,3 +6539,32 @@
 # Since 2.9
 ##
 { 'command': 'query-vm-generation-id', 'returns': 'GuidInfo' }
+
+##
+# @XenPvDriverInfo:
+#
+# @product-num: XEN PV driver product number
+# @build-num: XEN PV driver build number
+#
+# Since: X.Y
+##
+{ 'struct': 'XenPvDriverInfo',
+  'data': {'product-num':'int',
+           'build-num':'int'
+          }
+}
+
+##
+# @query-xen-platform-pv-driver-info:
+#
+# Returns: XenPvDriverInfo
+#
+# Since: X.Y
+#
+# Example:
+#
+# -> { "execute": "query-xen-platform-pv-driver-info" }
+# <- { "return": {"product-num": 3, "build-num": 1} }
+#
+##
+{ 'command': 'query-xen-platform-pv-driver-info', 'returns': 'XenPvDriverInfo' }
