@@ -25,9 +25,12 @@
 
 #include "qemu/osdep.h"
 #include "qapi/error.h"
+#include "qapi/qmp/types.h"
+#include "qmp-commands.h"
 #include "hw/hw.h"
 #include "hw/i386/pc.h"
 #include "hw/ide.h"
+#include "hw/pci/pci_bus.h"
 #include "hw/pci/pci.h"
 #include "hw/irq.h"
 #include "hw/xen/xen_common.h"
@@ -178,6 +181,33 @@ static void unplug_disks(PCIBus *b, PCIDevice *d, void *opaque)
 static void pci_unplug_disks(PCIBus *bus, uint32_t flags)
 {
     pci_for_each_device(bus, 0, unplug_disks, &flags);
+}
+
+XenPvDriverInfo* qmp_query_xen_platform_pv_driver_info(Error **errp)
+{
+    PCIBus *bus;
+    PCIDevice *dev;
+    PCIXenPlatformState *s;
+    int devfn;
+
+    bus = pci_find_primary_bus();
+    if (bus) {
+        for(devfn = 0; devfn < ARRAY_SIZE(bus->devices); devfn++) {
+            dev = bus->devices[devfn];
+            if (dev && !strncmp(dev->name, TYPE_XEN_PLATFORM,
+                                strlen(TYPE_XEN_PLATFORM))) {
+                XenPvDriverInfo *info = g_malloc0(sizeof(*info));
+
+                s = XEN_PLATFORM(dev);
+                info->product_num = s->driver_product_version;
+                info->build_num   = s->driver_build_number;
+
+                return info;
+           }
+        }
+    }
+    error_setg(errp, "Could not find %s pci device", TYPE_XEN_PLATFORM);
+    return NULL;
 }
 
 static void platform_fixed_ioport_writew(void *opaque, uint32_t addr, uint32_t val)
