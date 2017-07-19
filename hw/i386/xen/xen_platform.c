@@ -25,6 +25,7 @@
 
 #include "qemu/osdep.h"
 #include "qapi/error.h"
+#include "qapi/qapi-commands-misc.h"
 #include "hw/ide.h"
 #include "hw/pci/pci.h"
 #include "hw/qdev-properties.h"
@@ -51,6 +52,8 @@
 #endif
 
 #define PFFLAG_ROM_LOCK 1 /* Sets whether ROM memory area is RW or RO */
+
+static const Object *xen_platform_state = NULL;
 
 typedef struct PCIXenPlatformState {
     /*< private >*/
@@ -179,6 +182,24 @@ static void unplug_disks(PCIBus *b, PCIDevice *d, void *opaque)
 static void pci_unplug_disks(PCIBus *bus, uint32_t flags)
 {
     pci_for_each_device(bus, 0, unplug_disks, &flags);
+}
+
+XenPvDriverInfo* qmp_query_xen_platform_pv_driver_info(Error **errp)
+{
+    const PCIXenPlatformState *s;
+
+    if (xen_platform_state) {
+        XenPvDriverInfo *info = g_malloc0(sizeof(*info));
+
+        s = XEN_PLATFORM(xen_platform_state);
+        info->product_num = s->driver_product_version;
+        info->build_num   = s->driver_build_number;
+
+        return info;
+    }
+
+    error_setg(errp, "Could not find %s pci device", TYPE_XEN_PLATFORM);
+    return NULL;
 }
 
 static void platform_fixed_ioport_writew(void *opaque, uint32_t addr, uint32_t val)
@@ -498,6 +519,8 @@ static void xen_platform_realize(PCIDevice *dev, Error **errp)
                      &d->mmio_bar);
 
     platform_fixed_ioport_init(d);
+
+    xen_platform_state = OBJECT(d);
 }
 
 static void platform_reset(DeviceState *dev)
