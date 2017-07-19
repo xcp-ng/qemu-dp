@@ -26,6 +26,7 @@
 #include "qemu/osdep.h"
 #include "qapi/error.h"
 #include "qapi/qapi-commands-misc.h"
+#include "qapi/qapi-events-misc.h"
 #include "hw/ide.h"
 #include "hw/pci/pci.h"
 #include "hw/qdev-properties.h"
@@ -247,6 +248,9 @@ static void platform_fixed_ioport_writel(void *opaque, uint32_t addr,
     case 0:
         /* PV driver version */
         s->driver_build_number = val;
+        /* End of preamble */
+        qapi_event_send_xen_platform_pv_driver_info(s->driver_product_version,
+                s->driver_build_number);
         break;
     }
 }
