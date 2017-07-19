@@ -62,6 +62,7 @@ typedef struct PCIXenPlatformState {
     uint8_t flags; /* used only for version_id == 2 */
     int drivers_blacklisted;
     uint16_t driver_product_version;
+    uint32_t driver_build_number;
 
     /* Log from guest drivers */
     char log_buffer[4096];
@@ -218,9 +219,12 @@ static void platform_fixed_ioport_writew(void *opaque, uint32_t addr, uint32_t v
 static void platform_fixed_ioport_writel(void *opaque, uint32_t addr,
                                          uint32_t val)
 {
+    PCIXenPlatformState *s = opaque;
+
     switch (addr) {
     case 0:
         /* PV driver version */
+        s->driver_build_number = val;
         break;
     }
 }
