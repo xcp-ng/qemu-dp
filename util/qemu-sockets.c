@@ -223,8 +223,6 @@ static int inet_listen_saddr(InetSocketAddress *saddr,
             continue;
         }
 
-        socket_set_fast_reuse(slisten);
-
         port_min = inet_getport(e);
         port_max = saddr->has_to ? saddr->to + port_offset : port_min;
         for (p = port_min; p <= port_max; p++) {
