@@ -445,9 +445,11 @@ void qemu_display_init(DisplayState *ds, DisplayOptions *opts);
 void vnc_display_init(const char *id, Error **errp);
 void vnc_display_open(const char *id, Error **errp);
 void vnc_display_add_client(const char *id, int csock, bool skipauth);
+void vnc_clipboard_init(Error **errp);
 int vnc_display_password(const char *id, const char *password);
 int vnc_display_pw_expire(const char *id, time_t expires);
 QemuOpts *vnc_parse(const char *str, Error **errp);
+bool vnc_clipboard_parse(const char *str);
 int vnc_init_func(void *opaque, QemuOpts *opts, Error **errp);
 
 /* input.c */
