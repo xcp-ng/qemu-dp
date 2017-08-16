@@ -3561,6 +3561,12 @@ int main(int argc, char **argv, char **envp)
             case QEMU_OPTION_vnc:
                 vnc_parse(optarg, &error_fatal);
                 break;
+            case QEMU_OPTION_vnc_clipboard_socket_fd:
+                if (!vnc_clipboard_parse(optarg)) {
+                    error_report("invalid argument");
+                    exit(1);
+                }
+                break;
             case QEMU_OPTION_no_acpi:
                 acpi_enabled = 0;
                 break;
