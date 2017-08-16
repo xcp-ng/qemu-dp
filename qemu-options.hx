@@ -1784,6 +1784,9 @@ STEXI
 @table @option
 ETEXI
 
+DEF("vnc-clipboard-socket-fd", HAS_ARG, QEMU_OPTION_vnc_clipboard_socket_fd,
+    "-vnc-clipboard-socket-fd fd   specify the vnc clipboard socket fd\n", QEMU_ARCH_ALL)
+
 DEF("win2k-hack", 0, QEMU_OPTION_win2k_hack,
     "-win2k-hack     use it when installing Windows 2000 to avoid a disk full bug\n",
     QEMU_ARCH_I386)
