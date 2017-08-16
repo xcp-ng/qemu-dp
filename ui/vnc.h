@@ -63,6 +63,7 @@ typedef struct VncState VncState;
 typedef struct VncJob VncJob;
 typedef struct VncRect VncRect;
 typedef struct VncRectEntry VncRectEntry;
+typedef struct VncClipboardState VncClipboardState;
 
 typedef int VncReadEvent(VncState *vs, uint8_t *data, size_t len);
 
@@ -73,6 +74,9 @@ typedef void VncSendHextileTile(VncState *vs,
                                 void *last_bg,
                                 void *last_fg,
                                 int *has_bg, int *has_fg);
+
+typedef int VncClipboardReadEvent(VncClipboardState *vs,
+                                  uint8_t *data, size_t len);
 
 /* VNC_DIRTY_PIXELS_PER_BIT is the number of dirty pixels represented
  * by one bit in the dirty bitmap, should be a power of 2 */
@@ -95,6 +99,8 @@ typedef void VncSendHextileTile(VncState *vs,
 #define VNC_STAT_ROWS (VNC_MAX_HEIGHT / VNC_STAT_RECT)
 
 #define VNC_AUTH_CHALLENGE_SIZE 16
+
+#define VNC_CLIPBOARD_DATA_HEADER_LEN 4
 
 typedef struct VncDisplay VncDisplay;
 
@@ -349,6 +355,14 @@ struct VncState
     QTAILQ_ENTRY(VncState) next;
 };
 
+struct VncClipboardState {
+    QIOChannelSocket *sioc;     /* The underlying socket */
+    QIOChannel *ioc;            /* The channel currently used for I/O */
+    guint ioc_tag;
+    gboolean disconnecting;
+    size_t read_handler_expect;
+    Buffer input;
+};
 
 /*****************************************************************************
  *
@@ -541,6 +555,12 @@ void vnc_read_when(VncState *vs, VncReadEvent *func, size_t expecting);
 void vnc_disconnect_finish(VncState *vs);
 void vnc_start_protocol(VncState *vs);
 
+/* Clipboard related */
+gboolean vnc_clipboard_client_io(QIOChannel *ioc,
+                       GIOCondition condition,
+                       void *opaque);
+
+void vnc_clipboard_disconnect(VncClipboardState *vcs);
 
 /* Buffer I/O functions */
 uint32_t read_u32(uint8_t *data, size_t offset);
@@ -597,5 +617,7 @@ void vnc_tight_clear(VncState *vs);
 int vnc_zrle_send_framebuffer_update(VncState *vs, int x, int y, int w, int h);
 int vnc_zywrle_send_framebuffer_update(VncState *vs, int x, int y, int w, int h);
 void vnc_zrle_clear(VncState *vs);
+
+void vnc_dpy_set_clipboard(const uint8_t *buf, unsigned int len);
 
 #endif /* QEMU_VNC_H */
