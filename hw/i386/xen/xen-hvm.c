@@ -23,6 +23,7 @@
 #include "hw/xen/xen-bus.h"
 #include "qapi/error.h"
 #include "qapi/qapi-commands-misc.h"
+#include "qapi/qapi-events-misc-target.h"
 #include "qemu/error-report.h"
 #include "qemu/main-loop.h"
 #include "qemu/range.h"
@@ -1066,6 +1067,7 @@ static void handle_ioreq(XenIOState *state, ioreq_t *req)
             handle_vmport_ioreq(state, req);
             break;
         case IOREQ_TYPE_TIMEOFFSET:
+            qapi_event_send_rtc_change((int64_t)req->data);
             break;
         case IOREQ_TYPE_INVALIDATE:
             xen_invalidate_map_cache();
