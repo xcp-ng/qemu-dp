@@ -4869,6 +4869,7 @@ int main(int argc, char **argv, char **envp)
         vm_start();
     }
 
+    xen_setup_post();
     os_setup_post();
 
     main_loop();
