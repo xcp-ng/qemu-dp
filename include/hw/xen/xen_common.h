@@ -78,6 +78,38 @@ static inline void *xenforeignmemory_map(xc_interface *h, uint32_t dom,
 
 extern xenforeignmemory_handle *xen_fmem;
 
+#if CONFIG_XEN_CTRL_INTERFACE_VERSION < 41100
+
+static inline int xendevicemodel_relocate_memory(
+    xendevicemodel_handle *dmod, domid_t domid, uint32_t size, uint64_t src_gfn,
+    uint64_t dst_gfn)
+{
+    uint32_t i;
+    int rc;
+
+    for (i = 0; i < size; i++) {
+        unsigned long idx = src_gfn + i;
+        xen_pfn_t gpfn = dst_gfn + i;
+
+        rc = xc_domain_add_to_physmap(xen_xc, domid, XENMAPSPACE_gmfn, idx,
+                                      gpfn);
+        if (rc) {
+            return rc;
+        }
+    }
+
+    return 0;
+}
+
+static inline int xendevicemodel_pin_memory_cacheattr(
+    xendevicemodel_handle *dmod, domid_t domid, uint64_t start, uint64_t end,
+    uint32_t type)
+{
+    return xc_domain_pin_memory_cacheattr(xen_xc, domid, start, end, type);
+}
+
+#endif /* CONFIG_XEN_CTRL_INTERFACE_VERSION < 41100 */
+
 #if CONFIG_XEN_CTRL_INTERFACE_VERSION < 41000
 
 #define XEN_COMPAT_PHYSMAP
