@@ -30,6 +30,7 @@
 #include "qapi/error.h"
 #include "qemu/timer.h"
 #include "hw/input/hid.h"
+#include "hw/i386/pc.h"
 
 /* HID interface requests */
 #define GET_REPORT   0xa101
@@ -560,6 +561,121 @@ static const uint8_t qemu_keyboard_hid_report_descriptor[] = {
     0xc0,		/* End Collection */
 };
 
+/* USB Tablet Compatibility descriptors */
+
+static const USBDescStrings desc_strings_compat = {
+    [1] = "1",
+    [2] = "QEMU USB Tablet",
+    [3] = "QEMU 0.10.2",
+    [4] = "HID Mouse",
+    [5] = "HID Tablet",
+    [6] = "HID Keyboard",
+    [7] = "Endpoint1 Interrupt Pipe",
+};
+
+static const USBDescIface desc_iface_tablet_compat = {
+    .bInterfaceNumber              = 0,
+    .bNumEndpoints                 = 1,
+    .bInterfaceClass               = USB_CLASS_HID,
+    .bInterfaceSubClass            = 0x01, /* boot */
+    .bInterfaceProtocol            = 0x02,
+    .iInterface                    = 7,
+    .ndesc                         = 1,
+    .descs = (USBDescOther[]) {
+        {
+            /* HID descriptor */
+            .data = (uint8_t[]) {
+                0x09,          /*  u8  bLength */
+                USB_DT_HID,    /*  u8  bDescriptorType */
+                0x01, 0x00,    /*  u16 HID_class */
+                0x00,          /*  u8  country_code */
+                0x01,          /*  u8  num_descriptors */
+                USB_DT_REPORT, /*  u8  type: Report */
+                74, 0,         /*  u16 len */
+            },
+        },
+    },
+    .eps = (USBDescEndpoint[]) {
+        {
+            .bEndpointAddress      = USB_DIR_IN | 0x01,
+            .bmAttributes          = USB_ENDPOINT_XFER_INT,
+            .wMaxPacketSize        = 8,
+            .bInterval             = 0x0a,
+        },
+    },
+};
+
+static const USBDescDevice desc_device_tablet_compat = {
+    .bcdUSB                        = 0x0100,
+    .bMaxPacketSize0               = 8,
+    .bNumConfigurations            = 1,
+    .confs = (USBDescConfig[]) {
+        {
+            .bNumInterfaces        = 1,
+            .bConfigurationValue   = 1,
+            .iConfiguration        = 5,
+            .bmAttributes          = USB_CFG_ATT_ONE | USB_CFG_ATT_WAKEUP,
+            .bMaxPower             = 50,
+            .nif = 1,
+            .ifs = &desc_iface_tablet_compat,
+        },
+    },
+};
+
+static const USBDesc desc_tablet_compat = {
+    .id = {
+        .idVendor          = 0x0627,
+        .idProduct         = 0x0001,
+        .bcdDevice         = 0,
+        .iManufacturer     = 3,
+        .iProduct          = 2,
+        .iSerialNumber     = 1,
+    },
+    .full = &desc_device_tablet_compat,
+    .str  = desc_strings_compat,
+    .msos = &desc_msos_suspend,
+};
+
+static const uint8_t qemu_tablet_hid_report_descriptor_compat[] = {
+    0x05, 0x01,		/* Usage Page (Generic Desktop) */
+    0x09, 0x01,		/* Usage (Pointer) */
+    0xa1, 0x01,		/* Collection (Application) */
+    0x09, 0x01,		/*   Usage (Pointer) */
+    0xa1, 0x00,		/*   Collection (Physical) */
+    0x05, 0x09,		/*     Usage Page (Button) */
+    0x19, 0x01,		/*     Usage Minimum (1) */
+    0x29, 0x03,		/*     Usage Maximum (3) */
+    0x15, 0x00,		/*     Logical Minimum (0) */
+    0x25, 0x01,		/*     Logical Maximum (1) */
+    0x95, 0x03,		/*     Report Count (3) */
+    0x75, 0x01,		/*     Report Size (1) */
+    0x81, 0x02,		/*     Input (Data, Variable, Absolute) */
+    0x95, 0x01,		/*     Report Count (1) */
+    0x75, 0x05,		/*     Report Size (5) */
+    0x81, 0x01,		/*     Input (Constant) */
+    0x05, 0x01,		/*     Usage Page (Generic Desktop) */
+    0x09, 0x30,		/*     Usage (X) */
+    0x09, 0x31,		/*     Usage (Y) */
+    0x15, 0x00,		/*     Logical Minimum (0) */
+    0x26, 0xff, 0x7f,	/*     Logical Maximum (0x7fff) */
+    0x35, 0x00,		/*     Physical Minimum (0) */
+    0x46, 0xff, 0x7f,	/*     Physical Maximum (0x7fff) */
+    0x75, 0x10,		/*     Report Size (16) */
+    0x95, 0x02,		/*     Report Count (2) */
+    0x81, 0x02,		/*     Input (Data, Variable, Absolute) */
+    0x05, 0x01,		/*     Usage Page (Generic Desktop) */
+    0x09, 0x38,		/*     Usage (Wheel) */
+    0x15, 0x81,		/*     Logical Minimum (-0x7f) */
+    0x25, 0x7f,		/*     Logical Maximum (0x7f) */
+    0x35, 0x00,		/*     Physical Minimum (same as logical) */
+    0x45, 0x00,		/*     Physical Maximum (same as logical) */
+    0x75, 0x08,		/*     Report Size (8) */
+    0x95, 0x01,		/*     Report Count (1) */
+    0x81, 0x06,		/*     Input (Data, Variable, Relative) */
+    0xc0,		/*   End Collection */
+    0xc0,		/* End Collection */
+};
+
 static void usb_hid_changed(HIDState *hs)
 {
     USBHIDState *us = container_of(hs, USBHIDState, hid);
@@ -596,9 +712,15 @@ static void usb_hid_handle_control(USBDevice *dev, USBPacket *p,
 		       sizeof(qemu_mouse_hid_report_descriptor));
                 p->actual_length = sizeof(qemu_mouse_hid_report_descriptor);
             } else if (hs->kind == HID_TABLET) {
-                memcpy(data, qemu_tablet_hid_report_descriptor,
-		       sizeof(qemu_tablet_hid_report_descriptor));
-                p->actual_length = sizeof(qemu_tablet_hid_report_descriptor);
+                if (dev->usb_desc == &desc_tablet_compat) {
+                    memcpy(data, qemu_tablet_hid_report_descriptor_compat,
+		           sizeof(qemu_tablet_hid_report_descriptor_compat));
+                    p->actual_length = sizeof(qemu_tablet_hid_report_descriptor_compat);
+                } else {
+                    memcpy(data, qemu_tablet_hid_report_descriptor,
+		           sizeof(qemu_tablet_hid_report_descriptor));
+                    p->actual_length = sizeof(qemu_tablet_hid_report_descriptor);
+                }
             } else if (hs->kind == HID_KEYBOARD) {
                 memcpy(data, qemu_keyboard_hid_report_descriptor,
                        sizeof(qemu_keyboard_hid_report_descriptor));
@@ -731,8 +853,14 @@ static void usb_hid_initfn(USBDevice *dev, int kind,
 
 static void usb_tablet_realize(USBDevice *dev, Error **errp)
 {
-
-    usb_hid_initfn(dev, HID_TABLET, &desc_tablet, &desc_tablet2, errp);
+    if (object_property_get_bool(qdev_get_machine(),
+                                 PC_MACHINE_TRAD_COMPAT, errp)) {
+        /* We override the serial later so we don't need the preset value */
+        dev->serial = NULL;
+        usb_hid_initfn(dev, HID_TABLET, &desc_tablet_compat, NULL, errp);
+    } else {
+        usb_hid_initfn(dev, HID_TABLET, &desc_tablet, &desc_tablet2, errp);
+    }
 }
 
 static void usb_mouse_realize(USBDevice *dev, Error **errp)
