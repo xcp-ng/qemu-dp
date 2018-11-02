@@ -898,6 +898,10 @@ static void nvme_cmb_write(void *opaque, hwaddr addr, uint64_t data,
     unsigned size)
 {
     NvmeCtrl *n = (NvmeCtrl *)opaque;
+
+    if (addr + size > NVME_CMBSZ_GETSIZE(n->bar.cmbsz)) {
+        return;
+    }
     memcpy(&n->cmbuf[addr], &data, size);
 }
 
@@ -906,6 +910,9 @@ static uint64_t nvme_cmb_read(void *opaque, hwaddr addr, unsigned size)
     uint64_t val;
     NvmeCtrl *n = (NvmeCtrl *)opaque;
 
+    if (addr + size > NVME_CMBSZ_GETSIZE(n->bar.cmbsz)) {
+        return 0;
+    }
     memcpy(&val, &n->cmbuf[addr], size);
     return val;
 }
