@@ -41,6 +41,12 @@
 #include "qapi/qapi-visit-block-core.h"
 #include "block/crypto.h"
 
+#ifdef CONFIG_QEMUDP
+#define CACHE_CLEAN_CLOCK QEMU_CLOCK_HOST
+#else
+#define CACHE_CLEAN_CLOCK QEMU_CLOCK_VIRTUAL
+#endif
+
 /*
   Differences with QCOW:
 
@@ -723,7 +729,7 @@ static void cache_clean_timer_cb(void *opaque)
     BDRVQcow2State *s = bs->opaque;
     qcow2_cache_clean_unused(s->l2_table_cache);
     qcow2_cache_clean_unused(s->refcount_block_cache);
-    timer_mod(s->cache_clean_timer, qemu_clock_get_ms(QEMU_CLOCK_VIRTUAL) +
+    timer_mod(s->cache_clean_timer, qemu_clock_get_ms(CACHE_CLEAN_CLOCK) +
               (int64_t) s->cache_clean_interval * 1000);
 }
 
@@ -731,10 +737,10 @@ static void cache_clean_timer_init(BlockDriverState *bs, AioContext *context)
 {
     BDRVQcow2State *s = bs->opaque;
     if (s->cache_clean_interval > 0) {
-        s->cache_clean_timer = aio_timer_new(context, QEMU_CLOCK_VIRTUAL,
+        s->cache_clean_timer = aio_timer_new(context, CACHE_CLEAN_CLOCK,
                                              SCALE_MS, cache_clean_timer_cb,
                                              bs);
-        timer_mod(s->cache_clean_timer, qemu_clock_get_ms(QEMU_CLOCK_VIRTUAL) +
+        timer_mod(s->cache_clean_timer, qemu_clock_get_ms(CACHE_CLEAN_CLOCK) +
                   (int64_t) s->cache_clean_interval * 1000);
     }
 }
