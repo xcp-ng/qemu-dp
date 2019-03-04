@@ -3548,6 +3548,7 @@ static void bdrv_delete(BlockDriverState *bs)
     }
     QTAILQ_REMOVE(&all_bdrv_states, bs, bs_list);
 
+    bdrv_detach_aio_context(bs);
     g_free(bs);
 }
 
