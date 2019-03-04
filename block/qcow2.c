@@ -727,6 +727,10 @@ static void cache_clean_timer_cb(void *opaque)
 {
     BlockDriverState *bs = opaque;
     BDRVQcow2State *s = bs->opaque;
+    if (s == NULL) {
+        printf("--> cache_clean_timer_cb(NULL STATE)\n");
+        return;
+    }
     qcow2_cache_clean_unused(s->l2_table_cache);
     qcow2_cache_clean_unused(s->refcount_block_cache);
     timer_mod(s->cache_clean_timer, qemu_clock_get_ms(CACHE_CLEAN_CLOCK) +
