@@ -1,0 +1,19 @@
+##
+# @xen-watch-device:
+#
+# Add XenWD device
+#
+# @domid: xen domain id
+#
+# @devid: xen disk device id
+#
+# @type: device type
+#
+# @blocknode: blocknode
+#
+# @devicename: node_name to attch
+#
+# Since: 2.10
+##
+{ 'command': 'xen-watch-device',
+  'data': { 'domid': 'int', 'devid': 'int', 'type': 'str', 'blocknode': 'str', 'devicename': 'str' } }

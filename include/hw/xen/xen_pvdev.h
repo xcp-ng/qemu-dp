@@ -36,6 +36,9 @@ struct XenDevice {
     char               name[64];
     int                debug;
 
+    char*              blocknode;
+    char*              devicename;
+
     enum xenbus_state  be_state;
     enum xenbus_state  fe_state;
     int                online;
