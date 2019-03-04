@@ -147,7 +147,6 @@ static void ioreq_reset(struct ioreq *ioreq)
     memset(ioreq->refs, 0, sizeof(ioreq->refs));
     ioreq->prot = 0;
     memset(ioreq->page, 0, sizeof(ioreq->page));
-    ioreq->pages = NULL;
 
     ioreq->aio_inflight = 0;
     ioreq->aio_errors = 0;
@@ -210,6 +209,10 @@ static struct ioreq *ioreq_start(struct XenBlkDev *blkdev)
         /* allocate new struct */
         ioreq = g_malloc0(sizeof(*ioreq));
         ioreq->blkdev = blkdev;
+        /* We cannot need more pages per ioreq than this, and we do re-use ioreqs,
+         * so allocate the memory once here, to be freed in blk_free() when the
+         * ioreq is freed. */
+        ioreq->pages = qemu_memalign(XC_PAGE_SIZE, BLKIF_MAX_SEGMENTS_PER_REQUEST * XC_PAGE_SIZE);
         blkdev->requests_total++;
         qemu_iovec_init(&ioreq->v, BLKIF_MAX_SEGMENTS_PER_REQUEST);
     } else {
@@ -335,7 +338,6 @@ static void ioreq_unmap(struct ioreq *ioreq)
                           strerror(errno));
         }
         ioreq->blkdev->cnt_map -= ioreq->num_unmap;
-        ioreq->pages = NULL;
     } else {
         for (i = 0; i < ioreq->num_unmap; i++) {
             if (!ioreq->page[i]) {
@@ -500,8 +502,6 @@ static void ioreq_free_copy_buffers(struct ioreq *ioreq)
     for (i = 0; i < ioreq->v.niov; i++) {
         ioreq->page[i] = NULL;
     }
-
-    qemu_vfree(ioreq->pages);
 }
 
 static int ioreq_init_copy_buffers(struct ioreq *ioreq)
@@ -511,8 +511,6 @@ static int ioreq_init_copy_buffers(struct ioreq *ioreq)
     if (ioreq->v.niov == 0) {
         return 0;
     }
-
-    ioreq->pages = qemu_memalign(XC_PAGE_SIZE, ioreq->v.niov * XC_PAGE_SIZE);
 
     for (i = 0; i < ioreq->v.niov; i++) {
         ioreq->page[i] = ioreq->pages + i * XC_PAGE_SIZE;
@@ -1431,6 +1429,7 @@ static int blk_free(struct XenDevice *xendev)
         ioreq = QLIST_FIRST(&blkdev->freelist);
         QLIST_REMOVE(ioreq, list);
         qemu_iovec_destroy(&ioreq->v);
+        qemu_vfree(ioreq->pages);
         g_free(ioreq);
     }
 
