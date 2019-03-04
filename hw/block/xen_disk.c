@@ -559,7 +559,7 @@ static int ioreq_grant_copy(struct ioreq *ioreq)
 
     if (rc) {
         xen_pv_printf(&ioreq->blkdev->xendev, 0,
-                      "failed to copy data %d\n", rc);
+                      "failed to copy data %d (%d)\n", rc, errno);
         ioreq->aio_errors++;
         return -1;
     }
