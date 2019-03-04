@@ -532,7 +532,8 @@ static int ioreq_init_copy_buffers(struct ioreq *ioreq)
 static int ioreq_grant_copy(struct ioreq *ioreq)
 {
     xengnttab_handle *gnt = ioreq->blkdev->xendev.gnttabdev;
-    xengnttab_grant_copy_segment_t segs[BLKIF_MAX_SEGMENTS_PER_REQUEST];
+    struct legacy_ioctl_gntdev_grant_copy gcopy;
+    struct legacy_gntdev_grant_copy_segment segs[BLKIF_MAX_SEGMENTS_PER_REQUEST];
     int i, count, rc;
     int64_t file_blk = ioreq->blkdev->file_blk;
 
@@ -543,24 +544,21 @@ static int ioreq_grant_copy(struct ioreq *ioreq)
     count = ioreq->v.niov;
 
     for (i = 0; i < count; i++) {
-        if (ioreq->req.operation == BLKIF_OP_READ) {
-            segs[i].flags = GNTCOPY_dest_gref;
-            segs[i].dest.foreign.ref = ioreq->refs[i];
-            segs[i].dest.foreign.domid = ioreq->domids[i];
-            segs[i].dest.foreign.offset = ioreq->req.seg[i].first_sect * file_blk;
-            segs[i].source.virt = ioreq->v.iov[i].iov_base;
-        } else {
-            segs[i].flags = GNTCOPY_source_gref;
-            segs[i].source.foreign.ref = ioreq->refs[i];
-            segs[i].source.foreign.domid = ioreq->domids[i];
-            segs[i].source.foreign.offset = ioreq->req.seg[i].first_sect * file_blk;
-            segs[i].dest.virt = ioreq->v.iov[i].iov_base;
-        }
-        segs[i].len = (ioreq->req.seg[i].last_sect
-                       - ioreq->req.seg[i].first_sect + 1) * file_blk;
+        struct legacy_gntdev_grant_copy_segment *gcopy_seg = &segs[i];
+        gcopy.domid = ioreq->domids[i];
+        gcopy_seg->iov.iov_base = ioreq->v.iov[i].iov_base;
+        gcopy_seg->iov.iov_len = (ioreq->req.seg[i].last_sect
+                           - ioreq->req.seg[i].first_sect + 1) * file_blk;
+        gcopy_seg->ref = ioreq->refs[i];
+        gcopy_seg->offset = ioreq->req.seg[i].first_sect * file_blk;
     }
 
-    rc = xengnttab_grant_copy(gnt, count, segs);
+    gcopy.dir = ioreq->req.operation != BLKIF_OP_READ;
+
+    gcopy.count = count;
+    gcopy.segments = segs;
+
+    rc = ioctl(gnt->fd, IOCTL_LEGACY_GNTDEV_GRANT_COPY, &gcopy);
 
     if (rc) {
         xen_pv_printf(&ioreq->blkdev->xendev, 0,

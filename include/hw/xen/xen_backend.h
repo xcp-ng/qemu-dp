@@ -64,4 +64,47 @@ int xen_config_dev_vfb(int vdev, const char *type);
 int xen_config_dev_vkbd(int vdev);
 int xen_config_dev_console(int vdev);
 
+#if CONFIG_XEN_CTRL_INTERFACE_VERSION >= 40800
+struct xengntdev_handle {
+    void *logger, *logger_tofree;
+    int fd;
+};
+
+typedef struct xengntdev_handle xengnttab_handle;
+
+struct legacy_gntdev_grant_copy_segment {
+       /*
+        * source address and length
+        */
+       struct iovec iov;
+
+       /* the granted page */
+       uint32_t ref;
+
+       /* offset in the granted page */
+       uint16_t offset;
+
+       /* grant copy result (GNTST_XXX) */
+       int16_t status;
+};
+
+
+struct legacy_ioctl_gntdev_grant_copy {
+       /*
+        * copy direction: 0 to copy to guest, 1 to copy from guest
+        */
+       int dir;
+
+       /* domain ID */
+       uint32_t domid;
+
+       unsigned int count;
+
+       struct legacy_gntdev_grant_copy_segment *segments;
+};
+#define IOCTL_LEGACY_GNTDEV_GRANT_COPY \
+_IOC(_IOC_NONE, 'G', 8, sizeof(struct legacy_ioctl_gntdev_grant_copy))
+int check_for_legacy_grant_copy(xengnttab_handle *xgt);
+#endif
+
 #endif /* QEMU_HW_XEN_BACKEND_H */

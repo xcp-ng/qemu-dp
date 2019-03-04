@@ -39,6 +39,10 @@
 
 #include <xen/grant_table.h>
 
+#if CONFIG_XEN_CTRL_INTERFACE_VERSION >= 40800
+#include <sys/ioctl.h>
+#endif
+
 DeviceState *xen_sysdev;
 BusState *xen_sysbus;
 
@@ -535,6 +539,22 @@ void xenstore_update_fe(char *watch, struct XenDevice *xendev)
 }
 /* -------------------------------------------------------------------- */
 
+#if CONFIG_XEN_CTRL_INTERFACE_VERSION >= 40800
+int check_for_legacy_grant_copy(xengnttab_handle *xgt)
+{
+    int rc;
+    int fd = xgt->fd;
+    struct legacy_ioctl_gntdev_grant_copy copy;
+
+    copy.segments = NULL;
+    copy.count = 0;
+
+    rc = ioctl(fd, IOCTL_LEGACY_GNTDEV_GRANT_COPY, &copy);
+
+    return rc;
+}
+#endif
+
 int xen_be_init(void)
 {
     xengnttab_handle *gnttabdev;
@@ -554,7 +574,11 @@ int xen_be_init(void)
 
     gnttabdev = xengnttab_open(NULL, 0);
     if (gnttabdev != NULL) {
+#if CONFIG_XEN_CTRL_INTERFACE_VERSION >= 40800
+        if (check_for_legacy_grant_copy(gnttabdev) == 0) {
+#else
         if (xengnttab_grant_copy(gnttabdev, 0, NULL) == 0) {
+#endif
             xen_feature_grant_copy = true;
         }
         xengnttab_close(gnttabdev);
