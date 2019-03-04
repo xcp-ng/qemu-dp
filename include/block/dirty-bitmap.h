@@ -2,7 +2,11 @@
 #define BLOCK_DIRTY_BITMAP_H
 
 #include "qemu-common.h"
+#ifdef CONFIG_QEMUDP
+#include "dp-qapi/qapi-types-block-core.h"
+#else
 #include "qapi/qapi-types-block-core.h"
+#endif
 #include "qemu/hbitmap.h"
 
 BdrvDirtyBitmap *bdrv_create_dirty_bitmap(BlockDriverState *bs,

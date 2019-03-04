@@ -20,7 +20,11 @@
 #ifndef NBD_H
 #define NBD_H
 
+#ifdef CONFIG_QEMUDP
+#include "dp-qapi/qapi-types-block.h"
+#else
 #include "qapi/qapi-types-block.h"
+#endif
 #include "io/channel-socket.h"
 #include "crypto/tlscreds.h"
 

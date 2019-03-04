@@ -309,7 +309,9 @@ void xen_pv_del_xendev(struct XenDevice *xendev)
 
     QTAILQ_REMOVE(&xendevs, xendev, next);
 
+#ifndef CONFIG_QEMUDP
     qdev_unplug(&xendev->qdev, NULL);
+#endif
 }
 
 void xen_pv_insert_xendev(struct XenDevice *xendev)

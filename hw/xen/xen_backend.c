@@ -123,7 +123,9 @@ static struct XenDevice *xen_be_get_xendev(const char *type, int dom, int dev,
     xendev = g_malloc0(ops->size);
     object_initialize(&xendev->qdev, ops->size, TYPE_XENBACKEND);
     OBJECT(xendev)->free = g_free;
+#ifndef CONFIG_QEMUDP
     qdev_set_parent_bus(DEVICE(xendev), xen_sysbus);
+#endif
     qdev_set_id(DEVICE(xendev), g_strdup_printf("xen-%s-%d", type, dev));
     qdev_init_nofail(DEVICE(xendev));
     object_unref(OBJECT(xendev));
@@ -543,10 +545,12 @@ int xen_be_init(void)
         xengnttab_close(gnttabdev);
     }
 
+#ifndef CONFIG_QEMUDP
     xen_sysdev = qdev_create(NULL, TYPE_XENSYSDEV);
     qdev_init_nofail(xen_sysdev);
     xen_sysbus = qbus_create(TYPE_XENSYSBUS, DEVICE(xen_sysdev), "xen-sysbus");
     qbus_set_bus_hotplug_handler(xen_sysbus, &error_abort);
+#endif
 
     return 0;
 
@@ -558,6 +562,7 @@ err:
     return -1;
 }
 
+#ifndef CONFIG_QEMUDP
 static void xen_set_dynamic_sysbus(void)
 {
     Object *machine = qdev_get_machine();
@@ -566,6 +571,7 @@ static void xen_set_dynamic_sysbus(void)
 
     machine_class_allow_dynamic_sysbus_dev(mc, TYPE_XENSYSDEV);
 }
+#endif
 
 int xen_be_register(const char *type, struct XenDevOps *ops)
 {
@@ -588,7 +594,9 @@ int xen_be_register(const char *type, struct XenDevOps *ops)
 
 void xen_be_register_common(void)
 {
-    xen_set_dynamic_sysbus();
+#ifndef CONFIG_QEMUDP
+     xen_set_dynamic_sysbus();
+#endif
 
     xen_be_register("console", &xen_console_ops);
     xen_be_register("vkbd", &xen_kbdmouse_ops);
@@ -635,7 +643,11 @@ static void xendev_class_init(ObjectClass *klass, void *data)
 
 static const TypeInfo xendev_type_info = {
     .name          = TYPE_XENBACKEND,
+#ifdef CONFIG_QEMUDP
+    .parent        = TYPE_DEVICE,
+#else
     .parent        = TYPE_XENSYSDEV,
+#endif
     .class_init    = xendev_class_init,
     .instance_size = sizeof(struct XenDevice),
 };
