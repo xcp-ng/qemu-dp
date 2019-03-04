@@ -771,6 +771,12 @@ void qmp_xen_watch_device(int64_t domid, int64_t devid, const char *type, const 
     xendev->devicename = g_strdup(devicename);
     xen_be_check_state(xendev);
 }
+
+void qmp_xen_unwatch_device(int64_t domid, int64_t devid, const char *type, Error **errp)
+{
+    struct XenDevice *xendev = xen_pv_find_xendev(type, domid, devid);
+    if (xendev) xen_pv_del_xendev(xendev);
+}
 #endif
 
 type_init(xenbe_register_types)
