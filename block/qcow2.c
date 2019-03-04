@@ -736,6 +736,14 @@ static void cache_clean_timer_cb(void *opaque)
 static void cache_clean_timer_init(BlockDriverState *bs, AioContext *context)
 {
     BDRVQcow2State *s = bs->opaque;
+#ifdef CONFIG_QEMUDP
+    /* When opening a QCOW2 chain by opening its leaf, the parameters which were
+     * specified for the open are not inherited along the chain, so backing
+     * images will never get their caches cleaned. Since we want them to be, we
+     * might as well set a clean interval anyway and not bother with passing
+     * in the parameter. */
+    if (s->cache_clean_interval < 1) s->cache_clean_interval = 60;
+#endif
     if (s->cache_clean_interval > 0) {
         s->cache_clean_timer = aio_timer_new(context, CACHE_CLEAN_CLOCK,
                                              SCALE_MS, cache_clean_timer_cb,
@@ -784,8 +792,20 @@ static void read_cache_sizes(BlockDriverState *bs, QemuOpts *opts,
     *refcount_cache_size = qemu_opt_get_size(opts,
                                              QCOW2_OPT_REFCOUNT_CACHE_SIZE, 0);
 
+#ifdef CONFIG_QEMUDP
+    /* This will not end up getting used for l2_cache_size when we
+     * have no passed-in options, because we've set DEFAULT_L2_CACHE_BYTE_SIZE
+     * big enough so that will get used instead. So what we want it for
+     * is to set the size of the l2_table_cache entries which can be
+     * MADVISE_DONTNEED'd out by the cache cleaner, which we'd rather
+     * wasn't in whole clusters.
+     */
+    *l2_cache_entry_size = qemu_opt_get_size(
+        opts, QCOW2_OPT_L2_CACHE_ENTRY_SIZE, 32 * 1024);
+#else
     *l2_cache_entry_size = qemu_opt_get_size(
         opts, QCOW2_OPT_L2_CACHE_ENTRY_SIZE, s->cluster_size);
+#endif
 
     if (combined_cache_size_set) {
         if (l2_cache_size_set && refcount_cache_size_set) {
@@ -816,7 +836,7 @@ static void read_cache_sizes(BlockDriverState *bs, QemuOpts *opts,
         if (!l2_cache_size_set && !refcount_cache_size_set) {
             *l2_cache_size = MAX(DEFAULT_L2_CACHE_BYTE_SIZE,
                                  (uint64_t)DEFAULT_L2_CACHE_CLUSTERS
-                                 * s->cluster_size);
+                                 * *l2_cache_entry_size);
             *refcount_cache_size = *l2_cache_size
                                  / DEFAULT_L2_REFCOUNT_SIZE_RATIO;
         } else if (!l2_cache_size_set) {
