@@ -310,6 +310,10 @@ int bdrv_commit(BlockDriverState *bs);
 int bdrv_change_backing_file(BlockDriverState *bs,
     const char *backing_file, const char *backing_fmt);
 void bdrv_register(BlockDriver *bdrv);
+#ifdef CONFIG_QEMUDP
+int bdrv_drop_intermediate_clear(BlockDriverState *top, BlockDriverState *base,
+                           const char *backing_file_str, bool in_relink_chain);
+#endif
 int bdrv_drop_intermediate(BlockDriverState *top, BlockDriverState *base,
                            const char *backing_file_str);
 BlockDriverState *bdrv_find_overlay(BlockDriverState *active,
@@ -612,5 +616,6 @@ void bdrv_unregister_buf(BlockDriverState *bs, void *host);
 void bdrv_replace_node_name(BlockDriverState *bs,
                            const char *node_name,
                            Error **errp);
+void bdrv_detach_all_parents(BlockDriverState *bs);
 #endif
 #endif

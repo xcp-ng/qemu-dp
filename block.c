@@ -3699,8 +3699,18 @@ BlockDriverState *bdrv_find_base(BlockDriverState *bs)
  *  if active == top, that is considered an error
  *
  */
+#ifdef CONFIG_QEMUDP
 int bdrv_drop_intermediate(BlockDriverState *top, BlockDriverState *base,
                            const char *backing_file_str)
+{
+    return bdrv_drop_intermediate_clear(top, base, backing_file_str, false);
+}
+int bdrv_drop_intermediate_clear(BlockDriverState *top, BlockDriverState *base,
+                           const char *backing_file_str, bool in_relink_chain)
+#else
+int bdrv_drop_intermediate(BlockDriverState *top, BlockDriverState *base,
+                           const char *backing_file_str)
+#endif
 {
     BdrvChild *c, *next;
     Error *local_err = NULL;
@@ -3735,7 +3745,7 @@ int bdrv_drop_intermediate(BlockDriverState *top, BlockDriverState *base,
         }
 
         /* If so, update the backing file path in the image file */
-        if (c->role->update_filename) {
+        if (!in_relink_chain && c->role->update_filename) {
             ret = c->role->update_filename(c, base, backing_file_str,
                                            &local_err);
             if (ret < 0) {
