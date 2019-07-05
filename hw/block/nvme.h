@@ -387,8 +387,8 @@ enum NvmeAsyncEventRequest {
     NVME_AER_TYPE_SMART                     = 1,
     NVME_AER_TYPE_IO_SPECIFIC               = 6,
     NVME_AER_TYPE_VENDOR_SPECIFIC           = 7,
-    NVME_AER_INFO_ERR_INVALID_SQ            = 0,
-    NVME_AER_INFO_ERR_INVALID_DB            = 1,
+    NVME_AER_INFO_ERR_INVALID_DB_REGISTER   = 0,
+    NVME_AER_INFO_ERR_INVALID_DB_VALUE      = 1,
     NVME_AER_INFO_ERR_DIAG_FAIL             = 2,
     NVME_AER_INFO_ERR_PERS_INTERNAL_ERR     = 3,
     NVME_AER_INFO_ERR_TRANS_INTERNAL_ERR    = 4,
@@ -799,6 +799,8 @@ typedef struct NvmeCtrl {
     BlockConf    conf;
     NvmeParams   params;
 
+    uint64_t    starttime_ms;
+    uint16_t    temperature;
     uint32_t    page_size;
     uint16_t    page_bits;
     uint16_t    max_prp_ents;
@@ -821,6 +823,7 @@ typedef struct NvmeCtrl {
     NvmeRequest **aer_reqs;
     QSIMPLEQ_HEAD(, NvmeAsyncEvent) aer_queue;
 
+    NvmeErrorLog    *elpes;
     NvmeNamespace   namespace;
     NvmeSQueue      **sq;
     NvmeCQueue      **cq;
