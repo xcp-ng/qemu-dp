@@ -428,6 +428,7 @@ enum NvmeStatusCodes {
     NVME_CMD_ABORT_MISSING_FUSE = 0x000a,
     NVME_INVALID_NSID           = 0x000b,
     NVME_CMD_SEQ_ERROR          = 0x000c,
+    NVME_INVALID_USE_OF_CMB     = 0x0012,
     NVME_LBA_RANGE              = 0x0080,
     NVME_CAP_EXCEEDED           = 0x0081,
     NVME_NS_NOT_READY           = 0x0082,
@@ -768,11 +769,12 @@ typedef struct NvmeRequest {
     struct NvmeSQueue       *sq;
     BlockAIOCB              *aiocb;
     uint16_t                status;
-    bool                    has_sg;
+    bool                    is_cmb;
     NvmeCqe                 cqe;
     BlockAcctCookie         acct;
     QEMUSGList              qsg;
     QEMUIOVector            iov;
+    NvmeCmd                 cmd;
     QTAILQ_ENTRY(NvmeRequest)entry;
 } NvmeRequest;
 
