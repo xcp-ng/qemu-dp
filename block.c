@@ -1109,6 +1109,47 @@ static void update_options_from_flags(QDict *options, int flags)
     }
 }
 
+#ifdef CONFIG_QEMUDP
+void bdrv_replace_node_name(BlockDriverState *bs,
+                                  const char *node_name,
+                                  Error **errp)
+{
+    char *gen_node_name = NULL;
+
+    if (!node_name) {
+        node_name = gen_node_name = id_generate(ID_BLOCK);
+    } else if (!id_wellformed(node_name)) {
+        /*
+         * Check for empty string or invalid characters, but not if it is
+         * generated (generated names use characters not available to the user)
+         */
+        error_setg(errp, "Invalid node name");
+        return;
+    }
+
+    /* takes care of avoiding namespaces collisions */
+    if (blk_by_name(node_name)) {
+        error_setg(errp, "node-name=%s is conflicting with a device id",
+                   node_name);
+        goto out;
+    }
+
+    /* takes care of avoiding duplicates node names */
+    if (bdrv_find_node(node_name)) {
+        error_setg(errp, "Duplicate node name");
+        goto out;
+    }
+
+    /* copy node name into the bs and insert it into the graph list */
+    pstrcpy(bs->node_name, sizeof(bs->node_name), node_name);
+    /* Do *not* insert the bs in the graph_bdrv_states list as this is
+     * for when it is already there. Inserting it again will cause a
+     * use-after-free later */
+out:
+    g_free(gen_node_name);
+}
+#endif
+
 static void bdrv_assign_node_name(BlockDriverState *bs,
                                   const char *node_name,
                                   Error **errp)
