@@ -2021,6 +2021,10 @@ static int coroutine_fn bdrv_co_block_status(BlockDriverState *bs,
         }
     }
 
+/* The extra information provided by doing this comes at an
+ * EXTREMELY large cost for big QCow2 files. Let us not
+ * bother for qemu-dp */
+#ifndef CONFIG_QEMUDP
     if (want_zero && local_file && local_file != bs &&
         (ret & BDRV_BLOCK_DATA) && !(ret & BDRV_BLOCK_ZERO) &&
         (ret & BDRV_BLOCK_OFFSET_VALID)) {
@@ -2048,6 +2052,7 @@ static int coroutine_fn bdrv_co_block_status(BlockDriverState *bs,
             }
         }
     }
+#endif /* CONFIG_QEMUDP */
 
 out:
     bdrv_dec_in_flight(bs);
