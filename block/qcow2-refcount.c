@@ -829,7 +829,7 @@ static int QEMU_WARN_UNUSED_RESULT update_refcount(BlockDriverState *bs,
         cluster_offset += s->cluster_size)
     {
         int block_index;
-        uint64_t refcount;
+        uint64_t refcount = 0;
         int64_t cluster_index = cluster_offset >> s->cluster_bits;
         int64_t table_index = cluster_index >> s->refcount_block_bits;
 
@@ -957,7 +957,7 @@ int qcow2_update_cluster_refcount(BlockDriverState *bs,
 static int64_t alloc_clusters_noref(BlockDriverState *bs, uint64_t size)
 {
     BDRVQcow2State *s = bs->opaque;
-    uint64_t i, nb_clusters, refcount;
+    uint64_t i, nb_clusters, refcount=0;
     int ret;
 
     /* We can't allocate clusters if they may still be queued for discard. */

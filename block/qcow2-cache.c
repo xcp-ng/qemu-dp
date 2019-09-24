@@ -145,6 +145,7 @@ Qcow2Cache *qcow2_cache_create(BlockDriverState *bs, int num_tables,
         c = NULL;
     }
 
+    memset(c->table_array, 0, (size_t) num_tables * c->table_size);
     return c;
 }
 
