@@ -622,8 +622,8 @@ qemu-dp$(EXESUF): \
     hw/core/qdev.o hw/core/bus.o hw/core/hotplug.o hw/core/qdev-properties.o hw/core/irq.o \
     hw/core/fw-path-provider.o hw/core/reset.o chardev/char-socket.o \
     \
-    libqemudpqapi.a libqemuchardev.a libqemublock.a libqemuio.a libqemucrypto.a libqemuqom.a \
-    libqemucommondp.a libqemuutil.a
+    libqemudpqapi.a libqemuchardev.a libqemublock.a libqemuio.a libqemuqom.a \
+    libqemucommondp.a libqemuutil.a libqemucrypto.a
 
 qemu-dp$(EXESUF): LIBS = -lglib-2.0 -lz -laio -lutil -lxenevtchn -lxengnttab -lxenstore -lxenctrl -lxenforeignmemory
 
