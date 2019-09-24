@@ -1,0 +1,5 @@
+xen_disk_*
+nbd_blk_aio*
+blk_root*
+bdrv_open*
+dp_handle_qmp_command*
