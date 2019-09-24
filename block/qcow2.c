@@ -778,8 +778,20 @@ static void read_cache_sizes(BlockDriverState *bs, QemuOpts *opts,
     *refcount_cache_size = qemu_opt_get_size(opts,
                                              QCOW2_OPT_REFCOUNT_CACHE_SIZE, 0);
 
+#ifdef CONFIG_QEMUDP
+    /* This will not end up getting used for l2_cache_size when we
+     * have no passed-in options, because we've set DEFAULT_L2_CACHE_BYTE_SIZE
+     * big enough so that will get used instead. So what we want it for
+     * is to set the size of the l2_table_cache entries, which we'd rather
+     * wasn't in whole clusters because that eats way more memory than we
+     * need to.
+     */
+    *l2_cache_entry_size = qemu_opt_get_size(
+        opts, QCOW2_OPT_L2_CACHE_ENTRY_SIZE, 32 * 1024);
+#else
     *l2_cache_entry_size = qemu_opt_get_size(
         opts, QCOW2_OPT_L2_CACHE_ENTRY_SIZE, s->cluster_size);
+#endif
 
     if (combined_cache_size_set) {
         if (l2_cache_size_set && refcount_cache_size_set) {
@@ -810,7 +822,7 @@ static void read_cache_sizes(BlockDriverState *bs, QemuOpts *opts,
         if (!l2_cache_size_set && !refcount_cache_size_set) {
             *l2_cache_size = MAX(DEFAULT_L2_CACHE_BYTE_SIZE,
                                  (uint64_t)DEFAULT_L2_CACHE_CLUSTERS
-                                 * s->cluster_size);
+                                 * *l2_cache_entry_size);
             *refcount_cache_size = *l2_cache_size
                                  / DEFAULT_L2_REFCOUNT_SIZE_RATIO;
         } else if (!l2_cache_size_set) {

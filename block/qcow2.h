@@ -74,8 +74,13 @@
 #define MIN_REFCOUNT_CACHE_SIZE 4 /* clusters */
 
 /* Whichever is more */
+#ifdef CONFIG_QEMUDP
+#define DEFAULT_L2_CACHE_CLUSTERS 4 /* clusters */
+#define DEFAULT_L2_CACHE_BYTE_SIZE 512 * 1024 /* bytes */
+#else
 #define DEFAULT_L2_CACHE_CLUSTERS 8 /* clusters */
 #define DEFAULT_L2_CACHE_BYTE_SIZE 1048576 /* bytes */
+#endif
 
 /* The refblock cache needs only a fourth of the L2 cache size to cover as many
  * clusters */
