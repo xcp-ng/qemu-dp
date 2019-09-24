@@ -153,6 +153,9 @@ int main(int argc, char **argv)
 
 // Dropped in 4486e89c219c0d1b9bd8dfa0b1dd5b0d51ff2268
 //     iothread_stop_all();
+    bdrv_drain_all_begin();
+    bdrv_flush_all();
+    bdrv_drain_all_end();
     bdrv_close_all();
     dp_monitor_destroy();
     qemu_chr_cleanup();
