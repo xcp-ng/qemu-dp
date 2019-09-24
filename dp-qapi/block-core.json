@@ -4784,3 +4784,53 @@
   'data' : { 'node-name': 'str',
              'iothread': 'StrOrNull',
              '*force': 'bool' } }
+
+##
+# @relink-chain:
+#
+# Relink the image chain after an external commit operation has written
+# data between 'top' and 'base' into 'base' - i.e.. makes the parent of
+# 'top' point to 'base' as its backing file.
+#
+# Unlike @change-backing-file, this will effect a modification of the live
+# image chain. It will create a newly-opened 'base' which it will swap into the
+# image chain to replace the original, which will force a re-read of some
+# internal state which might have been changed by the external commit.
+#
+# Use of external commit comes with significant health warnings, since it will
+# race with the live datapath and block drivers are not written to support this
+# sort of thing. In particular, with QCOW2, if the external commit
+# causes the base image to grow beyond ((cluster_size/8)^2)*cluster_size, then
+# the l1 table will grow beyond 1 cluster in size, and move within the file
+# (because it must be in contiguous clusters), with Unpredictable Results.
+#
+# It is also vitally important that relink-chain is only used on completely
+# straight chains. It will ruin the internal state of anything else.
+#
+# @device:  the device name or node-name of a root node
+#
+# @base:   The file name of the backing image which will become the backing image
+#          for the parent of 'top'. If not specified, this is the deepest backing
+#          image.
+#
+# @top:    The file name of the first image whose backing images have been committed
+#          down into 'base', i.e. the highest image to be removed. it is an error
+#          for this to be the active layer.
+#
+# Returns: Nothing on success
+#          If @device does not exist, DeviceNotFound
+#          If image commit is not supported by this device, NotSupported
+#          If @base or @top is invalid, a generic error is returned
+#
+# Since: CitrixInternal
+#
+# Example:
+#
+# -> { "execute": "relink-chain",
+#      "arguments": { "device": "virtio0",
+#                     "top": "/tmp/snap1.qcow2" } }
+# <- { "return": {} }
+#
+##
+{ 'command': 'relink-chain',
+  'data': { 'device': 'str', 'top': 'str', '*base': 'str'  } }
