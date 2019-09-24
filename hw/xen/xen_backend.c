@@ -33,6 +33,9 @@
 #include "hw/xen/xen_backend.h"
 #include "hw/xen/xen_pvdev.h"
 #include "monitor/qdev.h"
+#ifdef CONFIG_QEMUDP
+#include "dp-qapi/qapi-commands-xen.h"
+#endif
 
 #include <xen/grant_table.h>
 
@@ -107,6 +110,18 @@ int xen_be_set_state(struct XenDevice *xendev, enum xenbus_state state)
 }
 
 /*
+ * free a XenDevice, now that we have some extra stuff in it we can't
+ * just use g_free() or it will leak
+ */
+static void xendevice_free(void *ptr)
+{
+    struct XenDevice *xendev = (struct XenDevice *)ptr;
+    g_free(xendev->blocknode);
+    g_free(xendev->devicename);
+    g_free(xendev);
+}
+
+/*
  * get xen backend device, allocate a new one if it doesn't exist.
  */
 static struct XenDevice *xen_be_get_xendev(const char *type, int dom, int dev,
@@ -122,7 +137,7 @@ static struct XenDevice *xen_be_get_xendev(const char *type, int dom, int dev,
     /* init new xendev */
     xendev = g_malloc0(ops->size);
     object_initialize(&xendev->qdev, ops->size, TYPE_XENBACKEND);
-    OBJECT(xendev)->free = g_free;
+    OBJECT(xendev)->free = xendevice_free;
 #ifndef CONFIG_QEMUDP
     qdev_set_parent_bus(DEVICE(xendev), xen_sysbus);
 #endif
@@ -697,11 +712,44 @@ static const TypeInfo xensysdev_info = {
     .class_init    = xen_sysdev_class_init,
 };
 
+
 static void xenbe_register_types(void)
 {
     type_register_static(&xensysbus_info);
     type_register_static(&xensysdev_info);
     type_register_static(&xendev_type_info);
 }
+
+#ifdef CONFIG_QEMUDP
+void qmp_xen_watch_device(int64_t domid, int64_t devid, const char *type, const char *blocknode, const char *devicename, Error **errp)
+{
+    struct XenDevice *xendev = NULL;
+
+    if (strcmp(type, "qdisk")) {
+        error_set(errp, ERROR_CLASS_DEVICE_NOT_FOUND,
+                  "Device type '%s' not supported", type);
+        return;
+    }
+    /* Important! The "type" argument must be a pointer to a static string
+     * because everything else assumes it will be. The pointer gets stored
+     * when xen_be_get_xendev() auto-creates the structure.
+     *
+     * Hence we check the argument matches "qdisk" above but we never use it
+     * otherwise.
+     */
+    xendev = xen_be_get_xendev("qdisk", domid, devid, &xen_blkdev_ops);
+    if (xendev == NULL) {
+        error_set(errp, ERROR_CLASS_DEVICE_NOT_FOUND,
+                  "Device type '%s-%ld' not found in domain %ld", "qdisk", devid, domid);
+        return;
+    }
+    xendev->blocknode = g_strdup(blocknode);
+    xendev->devicename = g_strdup(devicename);
+    /* Set the global xen_domid variable to the domid we are given, because
+     * subsequent patches need this */
+    xen_domid = domid;
+    xen_be_check_state(xendev);
+}
+#endif
 
 type_init(xenbe_register_types)
