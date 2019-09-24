@@ -160,4 +160,6 @@ void page_size_init(void);
  * returned. */
 bool dump_in_progress(void);
 
+#include "logging.h"
+
 #endif

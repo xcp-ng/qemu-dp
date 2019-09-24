@@ -94,6 +94,9 @@ int main(int argc, char **argv)
     Chardev *chr;
     QemuOpts *opts;
 
+    logging_set_prefix("qemu-dp");
+    logging_set_redirect(1);
+
     module_call_init(MODULE_INIT_TRACE);
     qcrypto_init(&error_fatal);
     module_call_init(MODULE_INIT_QOM);
