@@ -2,7 +2,11 @@
 #define BLOCK_H
 
 #include "block/aio.h"
+#ifdef CONFIG_QEMUDP
+#include "dp-qapi/qapi-types-block-core.h"
+#else
 #include "qapi/qapi-types-block-core.h"
+#endif
 #include "block/aio-wait.h"
 #include "qemu/iov.h"
 #include "qemu/coroutine.h"
