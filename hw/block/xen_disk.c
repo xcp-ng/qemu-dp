@@ -1019,6 +1019,10 @@ static void blk_disconnect(struct XenDevice *xendev)
         AioContext *ctx = blk_get_aio_context(blkdev->blk);
         BlockDriverState *bs = blk_bs(blkdev->blk);
 
+        do {
+            blk_handle_requests(blkdev);
+        } while (blkdev->more_work);
+
         aio_context_acquire(ctx);
 
         if (bs) {
