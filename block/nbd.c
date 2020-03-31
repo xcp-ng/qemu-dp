@@ -1645,10 +1645,13 @@ static void nbd_parse_filename(const char *filename, QDict *options,
         return;
     }
 
-    /* are we a UNIX or TCP socket? */
+    qdict_put_str(options, "server.uri", host_spec);
+    /* are we a UNIX or TCP socket, or a preopened socket? */
     if (strstart(host_spec, "unix:", &unixpath)) {
         qdict_put_str(options, "server.type", "unix");
         qdict_put_str(options, "server.path", unixpath);
+    } else if (strstart(host_spec, "fd:", &unixpath)) {
+        qdict_put_str(options, "server.type", "fd");
     } else {
         InetSocketAddress *addr = g_new(InetSocketAddress, 1);
 
@@ -1712,29 +1715,21 @@ static SocketAddress *nbd_config(BDRVNBDState *s, QDict *options,
 {
     SocketAddress *saddr = NULL;
     QDict *addr = NULL;
-    Visitor *iv = NULL;
-    Error *local_err = NULL;
-
+    const char *uri;
+    /* 
+     * Important to drain the QDict options as block.c checks to see
+     * if it is empty on return.
+     */
     qdict_extract_subqdict(options, &addr, "server.");
     if (!qdict_size(addr)) {
         error_setg(errp, "NBD server address missing");
         goto done;
     }
 
-    iv = qobject_input_visitor_new_flat_confused(addr, errp);
-    if (!iv) {
-        goto done;
-    }
-
-    visit_type_SocketAddress(iv, NULL, &saddr, &local_err);
-    if (local_err) {
-        error_propagate(errp, local_err);
-        goto done;
-    }
-
+    uri = qdict_get_str(addr, "uri");
+    saddr = socket_parse(uri, errp);
 done:
     qobject_unref(addr);
-    visit_free(iv);
     return saddr;
 }
 
