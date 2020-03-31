@@ -1068,18 +1068,26 @@ fail:
     return NULL;
 }
 
+static int get_fd_from_fdset(const char *fdstr)
+{
+    int64_t fdset_id = qemu_parse_fd(fdstr);
+    return (fdset_id == -1 ?
+            -1 : monitor_fdset_get_fd(fdset_id, O_RDWR));
+}
+
 static int socket_get_fd(const char *fdstr, int num, Error **errp)
 {
-    int fd;
+    int fd = -1;
     if (num != 1) {
         error_setg_errno(errp, EINVAL, "socket_get_fd: too many connections");
         return -1;
     }
     if (cur_mon) {
-        fd = monitor_get_fd(cur_mon, fdstr, errp);
-        if (fd < 0) {
-            return -1;
-        }
+        /*
+         * Don't create error object if search fails
+         * as we fall back to look in the fdset
+         */
+        fd = monitor_get_fd(cur_mon, fdstr, NULL);
     } else {
         if (qemu_strtoi(fdstr, NULL, 10, &fd) < 0) {
             error_setg_errno(errp, errno,
@@ -1087,6 +1095,12 @@ static int socket_get_fd(const char *fdstr, int num, Error **errp)
                              fdstr);
             return -1;
         }
+    }
+
+    /* fd may have been added to the fdset */
+    if ((fd < 0) && ((fd = get_fd_from_fdset(fdstr)) < 0)) {
+        error_setg(errp, "Socket fd '%s' not found in monitor or fdset.", fdstr);
+        return -1;
     }
     if (!fd_is_socket(fd)) {
         error_setg(errp, "File descriptor '%s' is not a socket", fdstr);
