@@ -1463,9 +1463,12 @@ static uint16_t nvme_get_feature_timestamp(NvmeCtrl *n, NvmeCmd *cmd,
 
 static uint16_t nvme_get_feature(NvmeCtrl *n, NvmeCmd *cmd, NvmeRequest *req)
 {
+    NvmeNamespace *ns;
+
     uint32_t dw10 = le32_to_cpu(cmd->cdw10);
     uint32_t dw11 = le32_to_cpu(cmd->cdw11);
     uint32_t result;
+    int i;
 
     trace_nvme_getfeat(dw10);
 
@@ -1483,7 +1486,17 @@ static uint16_t nvme_get_feature(NvmeCtrl *n, NvmeCmd *cmd, NvmeRequest *req)
         result = cpu_to_le32(n->features.err_rec);
         break;
     case NVME_VOLATILE_WRITE_CACHE:
-        result = cpu_to_le32(n->features.vwc);
+        for (i = 0; i < n->num_namespaces; i++) {
+            ns = n->namespaces[i];
+            if (!ns) {
+                continue;
+            }
+
+            result = cpu_to_le32(blk_enable_write_cache(ns->conf.blk));
+            if (result) {
+                break;
+            }
+        }
         trace_nvme_getfeat_vwcache(result ? "enabled" : "disabled");
         break;
     case NVME_NUMBER_OF_QUEUES:
@@ -1553,8 +1566,6 @@ static uint16_t nvme_set_feature(NvmeCtrl *n, NvmeCmd *cmd, NvmeRequest *req)
         }
         break;
     case NVME_VOLATILE_WRITE_CACHE:
-        n->features.vwc = dw11 & 0x1;
-
         for (int i = 0; i < n->num_namespaces; i++) {
             ns = n->namespaces[i];
             if (!ns) {
