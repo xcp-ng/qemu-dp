@@ -684,7 +684,6 @@ typedef struct NvmeFeatureVal {
     uint32_t    power_mgmt;
     uint32_t    temp_thresh;
     uint32_t    err_rec;
-    uint32_t    vwc;
     uint32_t    num_queues;
     uint32_t    int_coalescing;
     uint32_t    *int_vector_config;
