@@ -1486,6 +1486,7 @@ static uint16_t nvme_get_feature(NvmeCtrl *n, NvmeCmd *cmd, NvmeRequest *req)
         result = cpu_to_le32(n->features.err_rec);
         break;
     case NVME_VOLATILE_WRITE_CACHE:
+        result = 0;
         for (i = 0; i < n->num_namespaces; i++) {
             ns = n->namespaces[i];
             if (!ns) {
