@@ -38,6 +38,7 @@
 
 struct QEMUBH {
     AioContext *ctx;
+    const char *name;
     QEMUBHFunc *cb;
     void *opaque;
     QEMUBH *next;
@@ -46,7 +47,8 @@ struct QEMUBH {
     bool deleted;
 };
 
-void aio_bh_schedule_oneshot(AioContext *ctx, QEMUBHFunc *cb, void *opaque)
+void aio_bh_schedule_oneshot_full(AioContext *ctx, QEMUBHFunc *cb,
+                                  void *opaque, const char *name)
 {
     QEMUBH *bh;
     bh = g_new(QEMUBH, 1);
@@ -54,6 +56,7 @@ void aio_bh_schedule_oneshot(AioContext *ctx, QEMUBHFunc *cb, void *opaque)
         .ctx = ctx,
         .cb = cb,
         .opaque = opaque,
+        .name = name,
     };
     qemu_lockcnt_lock(&ctx->list_lock);
     bh->next = ctx->first_bh;
@@ -66,7 +69,8 @@ void aio_bh_schedule_oneshot(AioContext *ctx, QEMUBHFunc *cb, void *opaque)
     aio_notify(ctx);
 }
 
-QEMUBH *aio_bh_new(AioContext *ctx, QEMUBHFunc *cb, void *opaque)
+QEMUBH *aio_bh_new_full(AioContext *ctx, QEMUBHFunc *cb, void *opaque,
+                        const char *name)
 {
     QEMUBH *bh;
     bh = g_new(QEMUBH, 1);
@@ -74,6 +78,7 @@ QEMUBH *aio_bh_new(AioContext *ctx, QEMUBHFunc *cb, void *opaque)
         .ctx = ctx,
         .cb = cb,
         .opaque = opaque,
+        .name = name,
     };
     qemu_lockcnt_lock(&ctx->list_lock);
     bh->next = ctx->first_bh;
