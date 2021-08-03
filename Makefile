@@ -621,7 +621,20 @@ qemu-dp$(EXESUF): \
     hw/block/xen_disk.o hw/xen/xen_devconfig.o hw/xen/xen_backend.o hw/xen/xen_pvdev.o hw/xen/xen_backend.o \
     hw/core/qdev.o hw/core/bus.o hw/core/hotplug.o hw/core/qdev-properties.o hw/core/irq.o \
     hw/core/fw-path-provider.o hw/core/reset.o chardev/char-socket.o \
-    \
+
+ifdef CONFIG_VIRTFS
+qemu-dp$(EXESUF): \
+    fsdev/qemu-fsdev.o fsdev/9p-marshal.o fsdev/9p-iov-marshal.o \
+    fsdev/qemu-fsdev-opts.o fsdev/qemu-fsdev-throttle.o \
+    hw/9pfs/9p.o hw/9pfs/9p-util.o hw/9pfs/9p-local.o hw/9pfs/9p-xattr.o hw/9pfs/xen-9p-backend.o \
+    hw/9pfs/9p-xattr-user.o hw/9pfs/9p-posix-acl.o \
+    hw/9pfs/coth.o hw/9pfs/cofs.o hw/9pfs/codir.o hw/9pfs/cofile.o \
+    hw/9pfs/coxattr.o hw/9pfs/9p-synth.o \
+    hw/9pfs/9p-handle.o hw/9pfs/9p-proxy.o \
+    hw/9pfs/xen-9p-backend.o
+endif
+
+qemu-dp$(EXESUF): \
     libqemudpqapi.a libqemuchardev.a libqemublock.a libqemuio.a libqemuqom.a \
     libqemucommondp.a libqemuutil.a libqemucrypto.a
 
