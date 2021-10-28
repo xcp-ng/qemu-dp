@@ -608,4 +608,9 @@ bool bdrv_can_store_new_dirty_bitmap(BlockDriverState *bs, const char *name,
  */
 void bdrv_register_buf(BlockDriverState *bs, void *host, size_t size);
 void bdrv_unregister_buf(BlockDriverState *bs, void *host);
+#ifdef CONFIG_QEMUDP
+void bdrv_replace_node_name(BlockDriverState *bs,
+                           const char *node_name,
+                           Error **errp);
+#endif
 #endif

@@ -65,6 +65,9 @@
 #include "qemu/cutils.h"
 #include "qemu/help_option.h"
 #include "qemu/throttle-options.h"
+#ifdef CONFIG_QEMUDP
+#include "qemu/id.h"
+#endif
 
 static QTAILQ_HEAD(, BlockDriverState) monitor_bdrv_states =
     QTAILQ_HEAD_INITIALIZER(monitor_bdrv_states);
@@ -1640,6 +1643,9 @@ static void external_snapshot_prepare(BlkActionState *common,
     /* Device and node name of the image to generate the snapshot from */
     const char *device;
     const char *node_name;
+#ifdef CONFIG_QEMUDP
+    char old_node_name[256];
+#endif
     /* Reference to the new image (for 'blockdev-snapshot') */
     const char *snapshot_ref;
     /* File name of the new image (for 'blockdev-snapshot-sync') */
@@ -1761,6 +1767,14 @@ static void external_snapshot_prepare(BlkActionState *common,
 
     state->new_bs = bdrv_open(new_image_file, snapshot_ref, options, flags,
                               errp);
+
+#ifdef CONFIG_QEMUDP
+    /* Make sure the old overlay node_name is transferred to new overlay */
+    pstrcpy(old_node_name, sizeof(state->old_bs->node_name), state->old_bs->node_name);
+    bdrv_replace_node_name(state->old_bs, NULL, NULL);
+    bdrv_replace_node_name(state->new_bs, old_node_name, NULL);
+#endif
+
     /* We will manually add the backing_hd field to the bs later */
     if (!state->new_bs) {
         goto out;
