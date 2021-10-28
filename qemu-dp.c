@@ -110,7 +110,7 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-    qemu_dp_trace_init_events("/usr/lib64/xen/bin/qemu-dp-tracing");
+    qemu_dp_trace_init_events("/usr/lib64/qemu-dp/bin/qemu-dp-tracing");
 
     if (qemu_init_main_loop(&err)) {
         error_report_err(err);
