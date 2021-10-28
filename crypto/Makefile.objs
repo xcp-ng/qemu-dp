@@ -38,3 +38,7 @@ crypto-obj-y += block-luks.o
 crypto-aes-obj-y = aes.o
 
 stub-obj-y += pbkdf-stub.o
+
+# Override the previous crypto-obj-y value to avoid building most crypto
+crypto-obj-y = hash.o
+crypto-obj-$(if $(CONFIG_NETTLE),n,$(if $(CONFIG_GCRYPT),n,y)) += hash-glib.o

@@ -6,8 +6,8 @@ common-obj-$(CONFIG_TPM) += tpm.o
 common-obj-y += hostmem.o hostmem-ram.o
 common-obj-$(CONFIG_LINUX) += hostmem-file.o
 
-common-obj-y += cryptodev.o
-common-obj-y += cryptodev-builtin.o
+common-obj-$(call lnot,$(CONFIG_XEN)) += cryptodev.o
+common-obj-$(call lnot,$(CONFIG_XEN)) += cryptodev-builtin.o
 
 ifeq ($(CONFIG_VIRTIO),y)
 common-obj-y += cryptodev-vhost.o
