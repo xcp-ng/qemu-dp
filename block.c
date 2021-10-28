@@ -698,6 +698,8 @@ static int find_image_format(BlockBackend *file, const char *filename,
         return ret;
     }
 
+    /* blk_pread() does not necessarily fill the buffer */
+    memset(buf, 0, sizeof(buf));
     ret = blk_pread(file, 0, buf, sizeof(buf));
     if (ret < 0) {
         error_setg_errno(errp, -ret, "Could not read image for determining its "

@@ -4310,8 +4310,10 @@ void qmp_relink_chain(const char *device,
 {
     BlockDriverState *active_bs = NULL;
     BlockDriverState *top_bs = NULL, *top_bs_child = NULL;
-    BlockDriverState *base_bs = NULL, *new_base_bs = NULL;
+    BlockDriverState *base_bs = NULL;
+    BlockDriverState *new_base_bs = NULL;
     QDict *new_base_bs_options = NULL;
+    int new_base_bs_flags = 0;
     AioContext *aio_context = NULL;
     bool top_bs_child_ro = false;
     Error *local_err = NULL;
@@ -4370,8 +4372,21 @@ void qmp_relink_chain(const char *device,
     /* Now everything should be quiet, open a brand new base_bs with the same
      * flags as the original base_bs */
     local_err = NULL;
-    new_base_bs_options = qdict_clone_shallow(base_bs->explicit_options);
-    new_base_bs = bdrv_open(base_bs->filename, NULL, new_base_bs_options, base_bs->open_flags, &local_err);
+    /* The options should come from "explicit_options", because that's what was
+       passed in, before all the side_effects of bdrv_open() got to it. */
+    new_base_bs_options = qdict_new();
+    qdict_copy_default(new_base_bs_options, base_bs->explicit_options, BDRV_OPT_CACHE_NO_FLUSH);
+    qdict_copy_default(new_base_bs_options, base_bs->explicit_options, BDRV_OPT_CACHE_DIRECT);
+    qdict_copy_default(new_base_bs_options, base_bs->explicit_options, BDRV_OPT_READ_ONLY);
+    qdict_copy_default(new_base_bs_options, base_bs->explicit_options, BDRV_OPT_DISCARD);
+
+    /* Make sure the filename is in the new options */
+    qdict_put_str(new_base_bs_options, "file.driver", "file");
+    qdict_put_str(new_base_bs_options, "file.filename", base_bs->filename);
+    qdict_put_str(new_base_bs_options, "driver", "qcow2");
+
+    new_base_bs_flags = base_bs->open_flags;
+    new_base_bs = bdrv_open(NULL, NULL, new_base_bs_options, new_base_bs_flags, &local_err);
     if (new_base_bs == NULL) {
         error_propagate(errp, local_err);
         goto out_drain;
