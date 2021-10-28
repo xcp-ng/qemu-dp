@@ -201,6 +201,7 @@ GENERATED_FILES += dp-qapi/qapi-commands-introspect.c dp-qapi/qapi-commands-intr
 GENERATED_FILES += dp-qapi/qapi-commands-misc.c dp-qapi/qapi-commands-misc.h
 GENERATED_FILES += dp-qapi/qapi-commands-sockets.c dp-qapi/qapi-commands-sockets.h
 GENERATED_FILES += dp-qapi/qapi-commands-transaction.c dp-qapi/qapi-commands-transaction.h
+GENERATED_FILES += dp-qapi/qapi-commands-xen.c dp-qapi/qapi-commands-xen.h
 GENERATED_FILES += dp-qapi/qapi-events-block.c dp-qapi/qapi-events-block-core.h
 GENERATED_FILES += dp-qapi/qapi-events-block-core.c dp-qapi/qapi-events-block.h
 GENERATED_FILES += dp-qapi/qapi-events.c dp-qapi/qapi-events-char.h
@@ -211,6 +212,7 @@ GENERATED_FILES += dp-qapi/qapi-events-introspect.c dp-qapi/qapi-events-introspe
 GENERATED_FILES += dp-qapi/qapi-events-misc.c dp-qapi/qapi-events-misc.h
 GENERATED_FILES += dp-qapi/qapi-events-sockets.c dp-qapi/qapi-events-sockets.h
 GENERATED_FILES += dp-qapi/qapi-events-transaction.c dp-qapi/qapi-events-transaction.h
+GENERATED_FILES += dp-qapi/qapi-events-xen.c dp-qapi/qapi-events-xen.h
 GENERATED_FILES += dp-qapi/qapi-introspect.c dp-qapi/qapi-introspect.h
 GENERATED_FILES += dp-qapi/qapi-types-block.c dp-qapi/qapi-types-block-core.h
 GENERATED_FILES += dp-qapi/qapi-types-block-core.c dp-qapi/qapi-types-block.h
@@ -222,6 +224,7 @@ GENERATED_FILES += dp-qapi/qapi-types-introspect.c dp-qapi/qapi-types-introspect
 GENERATED_FILES += dp-qapi/qapi-types-misc.c dp-qapi/qapi-types-misc.h
 GENERATED_FILES += dp-qapi/qapi-types-sockets.c dp-qapi/qapi-types-sockets.h
 GENERATED_FILES += dp-qapi/qapi-types-transaction.c dp-qapi/qapi-types-transaction.h
+GENERATED_FILES += dp-qapi/qapi-types-xen.c dp-qapi/qapi-types-xen.h
 GENERATED_FILES += dp-qapi/qapi-visit-block.c dp-qapi/qapi-visit-block-core.h
 GENERATED_FILES += dp-qapi/qapi-visit-block-core.c dp-qapi/qapi-visit-block.h
 GENERATED_FILES += dp-qapi/qapi-visit.c dp-qapi/qapi-visit-char.h
@@ -232,6 +235,7 @@ GENERATED_FILES += dp-qapi/qapi-visit-introspect.c dp-qapi/qapi-visit-introspect
 GENERATED_FILES += dp-qapi/qapi-visit-misc.c dp-qapi/qapi-visit-misc.h
 GENERATED_FILES += dp-qapi/qapi-visit-sockets.c dp-qapi/qapi-visit-sockets.h
 GENERATED_FILES += dp-qapi/qapi-visit-transaction.c dp-qapi/qapi-visit-transaction.h
+GENERATED_FILES += dp-qapi/qapi-visit-xen.c dp-qapi/qapi-visit-xen.h
 GENERATED_FILES += dp-qapi/qapi-doc.texi
 
 GENERATED_FILES += $(TRACE_HEADERS)
@@ -593,6 +597,7 @@ libqemuchardev.a: $(chardev-obj-y)
 
 libqemudpqapi.a: dp-qapi/qapi-commands.o dp-qapi/qapi-commands-misc.o dp-qapi/qapi-commands-block-core.o \
 	dp-qapi/qapi-commands-block.o dp-qapi/qapi-commands-char.o dp-qapi/qapi-commands-transaction.o \
+	dp-qapi/qapi-commands-xen.o \
 	dp-qapi/qapi-types-block-core.o dp-qapi/qapi-visit-block-core.o dp-qapi/qapi-events-block-core.o \
 	dp-qapi/qapi-types-transaction.o dp-qapi/qapi-visit-transaction.o \
 	dp-qapi/qapi-types-crypto.o dp-qapi/qapi-visit-crypto.o \
@@ -600,6 +605,7 @@ libqemudpqapi.a: dp-qapi/qapi-commands.o dp-qapi/qapi-commands-misc.o dp-qapi/qa
 	dp-qapi/qapi-types-block.o dp-qapi/qapi-visit-block.o dp-qapi/qapi-events-block.o \
 	dp-qapi/qapi-types-char.o dp-qapi/qapi-visit-char.o \
 	dp-qapi/qapi-types-sockets.o dp-qapi/qapi-visit-sockets.o \
+	dp-qapi/qapi-types-xen.o dp-qapi/qapi-visit-xen.o dp-qapi/qapi-events-xen.o \
 	dp-qapi/qapi-types-misc.o dp-qapi/qapi-visit-misc.o dp-qapi/qapi-events-misc.o \
 	dp-qapi/qapi-builtin-types.o dp-qapi/qapi-builtin-visit.o \
 
@@ -704,6 +710,7 @@ dp-qapi/qapi-commands-introspect.c dp-qapi/qapi-commands-introspect.h \
 dp-qapi/qapi-commands-misc.c dp-qapi/qapi-commands-misc.h \
 dp-qapi/qapi-commands-sockets.c dp-qapi/qapi-commands-sockets.h \
 dp-qapi/qapi-commands-transaction.c dp-qapi/qapi-commands-transaction.h \
+dp-qapi/qapi-commands-xen.c dp-qapi/qapi-commands-xen.h \
 dp-qapi/qapi-events-block.c dp-qapi/qapi-events-block-core.h \
 dp-qapi/qapi-events-block-core.c dp-qapi/qapi-events-block.h \
 dp-qapi/qapi-events.c dp-qapi/qapi-events-char.h \
@@ -714,6 +721,7 @@ dp-qapi/qapi-events-introspect.c dp-qapi/qapi-events-introspect.h \
 dp-qapi/qapi-events-misc.c dp-qapi/qapi-events-misc.h \
 dp-qapi/qapi-events-sockets.c dp-qapi/qapi-events-sockets.h \
 dp-qapi/qapi-events-transaction.c dp-qapi/qapi-events-transaction.h \
+dp-qapi/qapi-events-xen.c dp-qapi/qapi-events-xen.h \
 dp-qapi/qapi-introspect.c dp-qapi/qapi-introspect.h \
 dp-qapi/qapi-types-block.c dp-qapi/qapi-types-block-core.h \
 dp-qapi/qapi-types-block-core.c dp-qapi/qapi-types-block.h \
@@ -725,6 +733,7 @@ dp-qapi/qapi-types-introspect.c dp-qapi/qapi-types-introspect.h \
 dp-qapi/qapi-types-misc.c dp-qapi/qapi-types-misc.h \
 dp-qapi/qapi-types-sockets.c dp-qapi/qapi-types-sockets.h \
 dp-qapi/qapi-types-transaction.c dp-qapi/qapi-types-transaction.h \
+dp-qapi/qapi-types-xen.c dp-qapi/qapi-types-xen.h \
 dp-qapi/qapi-visit-block.c dp-qapi/qapi-visit-block-core.h \
 dp-qapi/qapi-visit-block-core.c dp-qapi/qapi-visit-block.h \
 dp-qapi/qapi-visit.c dp-qapi/qapi-visit-char.h \
@@ -735,6 +744,7 @@ dp-qapi/qapi-visit-introspect.c dp-qapi/qapi-visit-introspect.h \
 dp-qapi/qapi-visit-misc.c dp-qapi/qapi-visit-misc.h \
 dp-qapi/qapi-visit-sockets.c dp-qapi/qapi-visit-sockets.h \
 dp-qapi/qapi-visit-transaction.c dp-qapi/qapi-visit-transaction.h \
+dp-qapi/qapi-visit-xen.c dp-qapi/qapi-visit-xen.h \
 dp-qapi/qapi-doc.texi: dp-qapi-gen-timestamp ;
 dp-qapi-gen-timestamp: $(dp-qapi-modules) $(qapi-py)
 	$(call quiet-command,$(PYTHON_UTF8) $(SRC_PATH)/scripts/qapi-gen.py \

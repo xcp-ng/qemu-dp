@@ -82,6 +82,7 @@
 { 'include': 'sockets.json' }
 { 'include': 'crypto.json' }
 { 'include': 'block.json' }
+{ 'include': 'xen.json' }
 { 'include': 'char.json' }
 { 'include': 'transaction.json' }
 { 'include': 'introspect.json' }
