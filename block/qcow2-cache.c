@@ -96,6 +96,8 @@ static inline bool can_clean_entry(Qcow2Cache *c, int i)
 void qcow2_cache_clean_unused(Qcow2Cache *c)
 {
     int i = 0;
+
+    if (!c) return;
     while (i < c->size) {
         int to_clean = 0;
 
@@ -153,6 +155,7 @@ int qcow2_cache_destroy(Qcow2Cache *c)
 {
     int i;
 
+    if (!c) return 0;
     for (i = 0; i < c->size; i++) {
         assert(c->entries[i].ref == 0);
     }
