@@ -56,6 +56,7 @@ util-obj-y += qapi/qapi-events-trace.o
 util-obj-y += qapi/qapi-events-transaction.o
 util-obj-y += qapi/qapi-events-ui.o
 util-obj-y += qapi/qapi-introspect.o
+util-obj-y += logging.o
 
 chardev-obj-y = chardev/
 
