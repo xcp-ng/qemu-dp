@@ -4302,6 +4302,116 @@ void qmp_x_block_latency_histogram_set(
     }
 }
 
+#ifdef CONFIG_QEMUDP
+void qmp_relink_chain(const char *device,
+                      const char *top,
+                      bool has_base, const char *base,
+                      Error **errp)
+{
+    BlockDriverState *active_bs = NULL;
+    BlockDriverState *top_bs = NULL, *top_bs_child = NULL;
+    BlockDriverState *base_bs = NULL, *new_base_bs = NULL;
+    QDict *new_base_bs_options = NULL;
+    AioContext *aio_context = NULL;
+    bool top_bs_child_ro = false;
+    Error *local_err = NULL;
+
+    /* Find the root bs for the device. Vital for error checking */
+    active_bs = qmp_get_root_bs(device, &local_err);
+    if (!active_bs) {
+        active_bs = bdrv_lookup_bs(device, device, NULL);
+        if (!active_bs) {
+            error_free(local_err);
+            error_set(errp, ERROR_CLASS_DEVICE_NOT_FOUND,
+                      "Device '%s' not found", device);
+        } else {
+            error_propagate(errp, local_err);
+        }
+        return;
+    }
+
+    aio_context = bdrv_get_aio_context(active_bs);
+    aio_context_acquire(aio_context);
+
+    /* Find the top_bs from the active layer */
+    top_bs = bdrv_find_backing_image(active_bs, top);
+    if (top_bs == NULL) {
+        error_setg(errp, "Top image file '%s' not found in image chain for device '%s'", top, device);
+        goto out;
+    }
+    assert(bdrv_get_aio_context(top_bs) == aio_context);
+
+    if (has_base && base) {
+        base_bs = bdrv_find_backing_image(top_bs, base);
+        if (base_bs == NULL) {
+            error_setg(errp, "Base image file '%s' not found in image chain for top '%s'", base, top_bs->filename);
+            goto out;
+        }
+    } else {
+        base_bs = bdrv_find_base(top_bs);
+    }
+    assert(bdrv_get_aio_context(base_bs) == aio_context);
+
+    top_bs_child = bdrv_find_overlay(active_bs, top_bs);
+    if (top_bs_child == NULL) {
+        error_setg(errp, "'top' image '%s' has no children", top_bs->filename);
+        goto out;
+    }
+
+    /* Take steps to ensure that all I/O has finished. This code
+     * is modelled on bdrv_set_aio_context() */
+    aio_disable_external(aio_context);
+    bdrv_parent_drained_begin(active_bs, NULL);
+    bdrv_drain(active_bs); /* ensure there are no in-flight requests */
+    while (aio_poll(aio_context, false)) {
+        /* wait for all bottom halves to execute */
+    }
+
+    /* Now everything should be quiet, open a brand new base_bs with the same
+     * flags as the original base_bs */
+    local_err = NULL;
+    new_base_bs_options = qdict_clone_shallow(base_bs->explicit_options);
+    new_base_bs = bdrv_open(base_bs->filename, NULL, new_base_bs_options, base_bs->open_flags, &local_err);
+    if (new_base_bs == NULL) {
+        error_propagate(errp, local_err);
+        goto out_drain;
+    }
+    /* Replace the previous base_bs with the new one */
+    local_err = NULL;
+    bdrv_replace_node(base_bs, new_base_bs, &local_err);
+    /* bdrv_open() created a bs with a reference count of 1. Then bdrv_replace_node()
+     * takes another reference. So we need to drop one reference here or we will not
+     * get freed properly when the time comes. */
+    bdrv_unref(new_base_bs);
+    /* Make sure the new_base_bs has the correct aio_context */
+    bdrv_attach_aio_context(new_base_bs, aio_context);
+    base_bs = new_base_bs;
+
+    /* Before calling bdrv_drop_intermediate(), we must ensure that the parent of
+     * top_bs is open read/write so that its backing file name can be updated. */
+    if (!(top_bs_child->open_flags & BDRV_O_RDWR)) {
+        top_bs_child_ro = true;
+        bdrv_reopen(top_bs_child, top_bs_child->open_flags | BDRV_O_RDWR, NULL);
+    }
+    /* Call our new, special version of bdrv_drop_intermediate(), which takes
+     * an extra argument telling it to clear the parents list of the base.
+     * We need this to avoid a race where we could get confused on a later relink
+     * when the internals haven't cleaned up yet but the external commit
+     * code has removed the file on disk, eventually resulting in a segfault
+     * in the QCOW2 cache cleaner */
+    bdrv_drop_intermediate_clear(top_bs, base_bs, NULL, true);
+
+    if (top_bs_child_ro) {
+        bdrv_reopen(top_bs_child, top_bs_child->open_flags & ~BDRV_O_RDWR, NULL);
+    }
+
+out_drain:
+    bdrv_parent_drained_end(active_bs, NULL);
+out:
+    aio_context_release(aio_context);
+}
+#endif
+
 QemuOptsList qemu_common_drive_opts = {
     .name = "drive",
     .head = QTAILQ_HEAD_INITIALIZER(qemu_common_drive_opts.head),
