@@ -381,7 +381,9 @@ static void raw_parse_flags(int bdrv_flags, int *open_flags)
     /* Use O_DSYNC for write-through caching, no flags for write-back caching,
      * and O_DIRECT for no caching. */
     if ((bdrv_flags & BDRV_O_NOCACHE)) {
-        *open_flags |= O_DIRECT;
+        if ((bdrv_flags & BDRV_O_RDWR) != 0) {
+            *open_flags |= O_DIRECT;
+        }
     }
 }
 
@@ -448,9 +450,7 @@ static int raw_open_common(BlockDriverState *bs, QDict *options,
         goto fail;
     }
 
-    aio_default = (bdrv_flags & BDRV_O_NATIVE_AIO)
-                  ? BLOCKDEV_AIO_OPTIONS_NATIVE
-                  : BLOCKDEV_AIO_OPTIONS_THREADS;
+    aio_default = BLOCKDEV_AIO_OPTIONS_NATIVE;
     aio = qapi_enum_parse(&BlockdevAioOptions_lookup,
                           qemu_opt_get(opts, "aio"),
                           aio_default, &local_err);
@@ -532,12 +532,12 @@ static int raw_open_common(BlockDriverState *bs, QDict *options,
 
 #ifdef CONFIG_LINUX_AIO
      /* Currently Linux does AIO only for files opened with O_DIRECT */
-    if (s->use_linux_aio && !(s->open_flags & O_DIRECT)) {
-        error_setg(errp, "aio=native was specified, but it requires "
-                         "cache.direct=on, which was not specified.");
-        ret = -EINVAL;
-        goto fail;
-    }
+//     if (s->use_linux_aio && !(s->open_flags & O_DIRECT)) {
+//         error_setg(errp, "aio=native was specified, but it requires "
+//                          "cache.direct=on, which was not specified.");
+//         ret = -EINVAL;
+//         goto fail;
+//     }
 #else
     if (s->use_linux_aio) {
         error_setg(errp, "aio=native was specified, but is not supported "
