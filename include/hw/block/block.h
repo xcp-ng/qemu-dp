@@ -12,7 +12,11 @@
 #define HW_BLOCK_H
 
 #include "qemu-common.h"
+#ifdef CONFIG_QEMUDP
+#include "dp-qapi/qapi-types-block-core.h"
+#else
 #include "qapi/qapi-types-block-core.h"
+#endif
 
 /* Configuration */
 

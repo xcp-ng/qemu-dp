@@ -32,7 +32,11 @@
 
 #include "qemu/osdep.h"
 #include "sysemu/block-backend.h"
+#ifdef CONFIG_QEMUDP
+#include "dp-qapi/qapi-types-block.h"
+#else
 #include "qapi/qapi-types-block.h"
+#endif
 #include "qemu/bswap.h"
 #include "hw/block/block.h"
 #include "trace.h"

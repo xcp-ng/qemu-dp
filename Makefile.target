@@ -33,7 +33,11 @@ QEMU_PROG_BUILD = $(QEMU_PROG)
 endif
 endif
 
+ifeq (y,$(CONFIG_QEMUDP))
+PROGS=
+else
 PROGS=$(QEMU_PROG) $(QEMU_PROGW)
+endif
 STPFILES=
 
 config-target.h: config-target.h-timestamp
@@ -84,7 +88,9 @@ stap:
 endif
 .PHONY: stap
 
+ifneq (y,$(CONFIG_QEMUDP))
 all: $(PROGS) stap
+endif
 
 # Dummy command so that make thinks it has done something
 	@true

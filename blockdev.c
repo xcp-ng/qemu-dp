@@ -40,9 +40,15 @@
 #include "qemu/error-report.h"
 #include "qemu/option.h"
 #include "qemu/config-file.h"
+#ifdef CONFIG_QEMUDP
+#include "dp-qapi/qapi-commands-block.h"
+#include "dp-qapi/qapi-commands-transaction.h"
+#include "dp-qapi/qapi-visit-block-core.h"
+#else
 #include "qapi/qapi-commands-block.h"
 #include "qapi/qapi-commands-transaction.h"
 #include "qapi/qapi-visit-block-core.h"
+#endif
 #include "qapi/qmp/qdict.h"
 #include "qapi/qmp/qnum.h"
 #include "qapi/qmp/qstring.h"

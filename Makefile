@@ -187,6 +187,53 @@ ifdef CONFIG_TRACE_UST
 TRACE_HEADERS += trace-ust-root.h $(trace-events-subdirs:%=%/trace-ust.h)
 endif
 
+## Leave the extra GENERATED_FILES and cleanup-related additions unguarded
+## so that make clean still cleans up after a reconfigure.
+GENERATED_FILES += dp-qapi/qapi-builtin-types.c dp-qapi/qapi-builtin-types.h
+GENERATED_FILES += dp-qapi/qapi-builtin-visit.c dp-qapi/qapi-builtin-visit.h
+GENERATED_FILES += dp-qapi/qapi-commands-block.c dp-qapi/qapi-commands-block-core.h
+GENERATED_FILES += dp-qapi/qapi-commands-block-core.c dp-qapi/qapi-commands-block.h
+GENERATED_FILES += dp-qapi/qapi-commands.c dp-qapi/qapi-commands-char.h
+GENERATED_FILES += dp-qapi/qapi-commands-char.c dp-qapi/qapi-commands-common.h
+GENERATED_FILES += dp-qapi/qapi-commands-common.c dp-qapi/qapi-commands-crypto.h
+GENERATED_FILES += dp-qapi/qapi-commands-crypto.c dp-qapi/qapi-commands.h
+GENERATED_FILES += dp-qapi/qapi-commands-introspect.c dp-qapi/qapi-commands-introspect.h
+GENERATED_FILES += dp-qapi/qapi-commands-misc.c dp-qapi/qapi-commands-misc.h
+GENERATED_FILES += dp-qapi/qapi-commands-sockets.c dp-qapi/qapi-commands-sockets.h
+GENERATED_FILES += dp-qapi/qapi-commands-transaction.c dp-qapi/qapi-commands-transaction.h
+GENERATED_FILES += dp-qapi/qapi-events-block.c dp-qapi/qapi-events-block-core.h
+GENERATED_FILES += dp-qapi/qapi-events-block-core.c dp-qapi/qapi-events-block.h
+GENERATED_FILES += dp-qapi/qapi-events.c dp-qapi/qapi-events-char.h
+GENERATED_FILES += dp-qapi/qapi-events-char.c dp-qapi/qapi-events-common.h
+GENERATED_FILES += dp-qapi/qapi-events-common.c dp-qapi/qapi-events-crypto.h
+GENERATED_FILES += dp-qapi/qapi-events-crypto.c dp-qapi/qapi-events.h
+GENERATED_FILES += dp-qapi/qapi-events-introspect.c dp-qapi/qapi-events-introspect.h
+GENERATED_FILES += dp-qapi/qapi-events-misc.c dp-qapi/qapi-events-misc.h
+GENERATED_FILES += dp-qapi/qapi-events-sockets.c dp-qapi/qapi-events-sockets.h
+GENERATED_FILES += dp-qapi/qapi-events-transaction.c dp-qapi/qapi-events-transaction.h
+GENERATED_FILES += dp-qapi/qapi-introspect.c dp-qapi/qapi-introspect.h
+GENERATED_FILES += dp-qapi/qapi-types-block.c dp-qapi/qapi-types-block-core.h
+GENERATED_FILES += dp-qapi/qapi-types-block-core.c dp-qapi/qapi-types-block.h
+GENERATED_FILES += dp-qapi/qapi-types.c dp-qapi/qapi-types-char.h
+GENERATED_FILES += dp-qapi/qapi-types-char.c dp-qapi/qapi-types-common.h
+GENERATED_FILES += dp-qapi/qapi-types-common.c dp-qapi/qapi-types-crypto.h
+GENERATED_FILES += dp-qapi/qapi-types-crypto.c dp-qapi/qapi-types.h
+GENERATED_FILES += dp-qapi/qapi-types-introspect.c dp-qapi/qapi-types-introspect.h
+GENERATED_FILES += dp-qapi/qapi-types-misc.c dp-qapi/qapi-types-misc.h
+GENERATED_FILES += dp-qapi/qapi-types-sockets.c dp-qapi/qapi-types-sockets.h
+GENERATED_FILES += dp-qapi/qapi-types-transaction.c dp-qapi/qapi-types-transaction.h
+GENERATED_FILES += dp-qapi/qapi-visit-block.c dp-qapi/qapi-visit-block-core.h
+GENERATED_FILES += dp-qapi/qapi-visit-block-core.c dp-qapi/qapi-visit-block.h
+GENERATED_FILES += dp-qapi/qapi-visit.c dp-qapi/qapi-visit-char.h
+GENERATED_FILES += dp-qapi/qapi-visit-char.c dp-qapi/qapi-visit-common.h
+GENERATED_FILES += dp-qapi/qapi-visit-common.c dp-qapi/qapi-visit-crypto.h
+GENERATED_FILES += dp-qapi/qapi-visit-crypto.c dp-qapi/qapi-visit.h
+GENERATED_FILES += dp-qapi/qapi-visit-introspect.c dp-qapi/qapi-visit-introspect.h
+GENERATED_FILES += dp-qapi/qapi-visit-misc.c dp-qapi/qapi-visit-misc.h
+GENERATED_FILES += dp-qapi/qapi-visit-sockets.c dp-qapi/qapi-visit-sockets.h
+GENERATED_FILES += dp-qapi/qapi-visit-transaction.c dp-qapi/qapi-visit-transaction.h
+GENERATED_FILES += dp-qapi/qapi-doc.texi
+
 GENERATED_FILES += $(TRACE_HEADERS)
 GENERATED_FILES += $(TRACE_SOURCES)
 GENERATED_FILES += $(BUILD_DIR)/trace-events-all
@@ -535,6 +582,48 @@ qemu-img$(EXESUF): qemu-img.o $(block-obj-y) $(crypto-obj-y) $(io-obj-y) $(qom-o
 qemu-nbd$(EXESUF): qemu-nbd.o $(block-obj-y) $(crypto-obj-y) $(io-obj-y) $(qom-obj-y) $(COMMON_LDADDS)
 qemu-io$(EXESUF): qemu-io.o $(block-obj-y) $(crypto-obj-y) $(io-obj-y) $(qom-obj-y) $(COMMON_LDADDS)
 
+ifeq (y,$(CONFIG_QEMUDP))
+libqemublock.a: $(block-obj-y)
+libqemucommondp.a:  hw/block/trace.o nbd/trace.o scsi/trace.o block/stream.o \
+	net/socket.o
+libqemuio.a: $(io-obj-y)
+libqemuqom.a: $(qom-obj-y)
+libqemucrypto.a: $(crypto-obj-y)
+libqemuchardev.a: $(chardev-obj-y)
+
+libqemudpqapi.a: dp-qapi/qapi-commands.o dp-qapi/qapi-commands-misc.o dp-qapi/qapi-commands-block-core.o \
+	dp-qapi/qapi-commands-block.o dp-qapi/qapi-commands-char.o dp-qapi/qapi-commands-transaction.o \
+	dp-qapi/qapi-types-block-core.o dp-qapi/qapi-visit-block-core.o dp-qapi/qapi-events-block-core.o \
+	dp-qapi/qapi-types-transaction.o dp-qapi/qapi-visit-transaction.o \
+	dp-qapi/qapi-types-crypto.o dp-qapi/qapi-visit-crypto.o \
+	dp-qapi/qapi-types-common.o dp-qapi/qapi-visit-common.o \
+	dp-qapi/qapi-types-block.o dp-qapi/qapi-visit-block.o dp-qapi/qapi-events-block.o \
+	dp-qapi/qapi-types-char.o dp-qapi/qapi-visit-char.o \
+	dp-qapi/qapi-types-sockets.o dp-qapi/qapi-visit-sockets.o \
+	dp-qapi/qapi-types-misc.o dp-qapi/qapi-visit-misc.o dp-qapi/qapi-events-misc.o \
+	dp-qapi/qapi-builtin-types.o dp-qapi/qapi-builtin-visit.o \
+
+## Some of the object files directly named here are also present in the
+## static libraries generated above. They are included here because there are
+## no link-time references to their symbols from the rest of the code. However
+## there *are* run-time requirements for those symbols. An example is
+## chardev/char-socket.o which provides char_socket_type_info.
+qemu-dp$(EXESUF): \
+    qemu-dp.o dp-monitor.o dp-lib.o dp-stub.o \
+    block.o iothread.o blockdev.o blockdev-nbd.o blockjob.o trace-root.o \
+    \
+    hw/block/xen_disk.o hw/xen/xen_devconfig.o hw/xen/xen_backend.o hw/xen/xen_pvdev.o hw/xen/xen_backend.o \
+    hw/core/qdev.o hw/core/bus.o hw/core/hotplug.o hw/core/qdev-properties.o hw/core/irq.o \
+    hw/core/fw-path-provider.o hw/core/reset.o chardev/char-socket.o \
+    \
+    libqemudpqapi.a libqemuchardev.a libqemublock.a libqemuio.a libqemucrypto.a libqemuqom.a \
+    libqemucommondp.a libqemuutil.a
+
+qemu-dp$(EXESUF): LIBS = -lglib-2.0 -lz -laio -lutil -lxenevtchn -lxengnttab -lxenstore -lxenctrl -lxenforeignmemory
+
+all: qemu-dp$(EXESUF)
+endif
+
 qemu-bridge-helper$(EXESUF): qemu-bridge-helper.o $(COMMON_LDADDS)
 
 qemu-keymap$(EXESUF): qemu-keymap.o ui/input-keymap.o $(COMMON_LDADDS)
@@ -592,6 +681,67 @@ qapi-modules = $(SRC_PATH)/qapi/qapi-schema.json $(SRC_PATH)/qapi/common.json \
                $(SRC_PATH)/qapi/trace.json \
                $(SRC_PATH)/qapi/transaction.json \
                $(SRC_PATH)/qapi/ui.json
+
+ifeq (y,$(CONFIG_QEMUDP))
+## Create our own dp-qapi schema to hold only the command set we want
+## qapi-dp to support. This allows us to modify some command sets
+## without breaking the originals.
+dp-qapi-modules = $(SRC_PATH)/dp-qapi/dp-qapi-schema.json \
+		$(SRC_PATH)/dp-qapi/block.json $(SRC_PATH)/dp-qapi/block-core.json \
+		$(SRC_PATH)/dp-qapi/char.json $(SRC_PATH)/dp-qapi/common.json \
+		$(SRC_PATH)/dp-qapi/crypto.json $(SRC_PATH)/dp-qapi/introspect.json \
+		$(SRC_PATH)/dp-qapi/misc.json $(SRC_PATH)/dp-qapi/sockets.json
+
+dp-qapi/qapi-builtin-types.c dp-qapi/qapi-builtin-types.h \
+dp-qapi/qapi-builtin-visit.c dp-qapi/qapi-builtin-visit.h \
+dp-qapi/qapi-commands-block.c dp-qapi/qapi-commands-block-core.h \
+dp-qapi/qapi-commands-block-core.c dp-qapi/qapi-commands-block.h \
+dp-qapi/qapi-commands.c dp-qapi/qapi-commands-char.h \
+dp-qapi/qapi-commands-char.c dp-qapi/qapi-commands-common.h \
+dp-qapi/qapi-commands-common.c dp-qapi/qapi-commands-crypto.h \
+dp-qapi/qapi-commands-crypto.c dp-qapi/qapi-commands.h \
+dp-qapi/qapi-commands-introspect.c dp-qapi/qapi-commands-introspect.h \
+dp-qapi/qapi-commands-misc.c dp-qapi/qapi-commands-misc.h \
+dp-qapi/qapi-commands-sockets.c dp-qapi/qapi-commands-sockets.h \
+dp-qapi/qapi-commands-transaction.c dp-qapi/qapi-commands-transaction.h \
+dp-qapi/qapi-events-block.c dp-qapi/qapi-events-block-core.h \
+dp-qapi/qapi-events-block-core.c dp-qapi/qapi-events-block.h \
+dp-qapi/qapi-events.c dp-qapi/qapi-events-char.h \
+dp-qapi/qapi-events-char.c dp-qapi/qapi-events-common.h \
+dp-qapi/qapi-events-common.c dp-qapi/qapi-events-crypto.h \
+dp-qapi/qapi-events-crypto.c dp-qapi/qapi-events.h \
+dp-qapi/qapi-events-introspect.c dp-qapi/qapi-events-introspect.h \
+dp-qapi/qapi-events-misc.c dp-qapi/qapi-events-misc.h \
+dp-qapi/qapi-events-sockets.c dp-qapi/qapi-events-sockets.h \
+dp-qapi/qapi-events-transaction.c dp-qapi/qapi-events-transaction.h \
+dp-qapi/qapi-introspect.c dp-qapi/qapi-introspect.h \
+dp-qapi/qapi-types-block.c dp-qapi/qapi-types-block-core.h \
+dp-qapi/qapi-types-block-core.c dp-qapi/qapi-types-block.h \
+dp-qapi/qapi-types.c dp-qapi/qapi-types-char.h \
+dp-qapi/qapi-types-char.c dp-qapi/qapi-types-common.h \
+dp-qapi/qapi-types-common.c dp-qapi/qapi-types-crypto.h \
+dp-qapi/qapi-types-crypto.c dp-qapi/qapi-types.h \
+dp-qapi/qapi-types-introspect.c dp-qapi/qapi-types-introspect.h \
+dp-qapi/qapi-types-misc.c dp-qapi/qapi-types-misc.h \
+dp-qapi/qapi-types-sockets.c dp-qapi/qapi-types-sockets.h \
+dp-qapi/qapi-types-transaction.c dp-qapi/qapi-types-transaction.h \
+dp-qapi/qapi-visit-block.c dp-qapi/qapi-visit-block-core.h \
+dp-qapi/qapi-visit-block-core.c dp-qapi/qapi-visit-block.h \
+dp-qapi/qapi-visit.c dp-qapi/qapi-visit-char.h \
+dp-qapi/qapi-visit-char.c dp-qapi/qapi-visit-common.h \
+dp-qapi/qapi-visit-common.c dp-qapi/qapi-visit-crypto.h \
+dp-qapi/qapi-visit-crypto.c dp-qapi/qapi-visit.h \
+dp-qapi/qapi-visit-introspect.c dp-qapi/qapi-visit-introspect.h \
+dp-qapi/qapi-visit-misc.c dp-qapi/qapi-visit-misc.h \
+dp-qapi/qapi-visit-sockets.c dp-qapi/qapi-visit-sockets.h \
+dp-qapi/qapi-visit-transaction.c dp-qapi/qapi-visit-transaction.h \
+dp-qapi/qapi-doc.texi: dp-qapi-gen-timestamp ;
+dp-qapi-gen-timestamp: $(dp-qapi-modules) $(qapi-py)
+	$(call quiet-command,$(PYTHON_UTF8) $(SRC_PATH)/scripts/qapi-gen.py \
+		-o "dp-qapi" -b $<, \
+		"GEN","$(@:%-timestamp=%)")
+	@>$@
+endif
 
 qapi/qapi-builtin-types.c qapi/qapi-builtin-types.h \
 qapi/qapi-types.c qapi/qapi-types.h \
@@ -731,6 +881,7 @@ clean:
 	rm -f trace/generated-tracers-dtrace.h*
 	rm -f $(foreach f,$(GENERATED_FILES),$(f) $(f)-timestamp)
 	rm -f qapi-gen-timestamp
+	rm -f dp-qapi-gen-timestamp
 	rm -rf qga/qapi-generated
 	for d in $(ALL_SUBDIRS); do \
 	if test -d $$d; then $(MAKE) -C $$d $@ || exit 1; fi; \

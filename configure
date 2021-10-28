@@ -326,6 +326,7 @@ sdlabi=""
 virtfs=""
 mpath=""
 vnc="yes"
+qemudp="no"
 sparse="no"
 vde=""
 vnc_sasl=""
@@ -989,6 +990,10 @@ for opt do
   ;;
   --enable-vnc) vnc="yes"
   ;;
+  --enable-qemudp) qemudp="yes"
+  ;;
+  --disable-qemudp) qemudp="no"
+  ;;
   --oss-lib=*) oss_lib="$optarg"
   ;;
   --audio-drv-list=*) audio_drv_list="$optarg"
@@ -1544,6 +1549,7 @@ Advanced options (experts only):
                            xen pv domain builder
   --enable-debug-stack-usage
                            track the maximum stack usage of stacks created by qemu_alloc_stack
+  --enable-qemudp          Build the qemu datapath and tools instead of an emulator
 
 Optional features, enabled with --enable-FEATURE and
 disabled with --disable-FEATURE, default is enabled if available:
@@ -5493,6 +5499,9 @@ if test "$want_tools" = "yes" ; then
   if [ "$ivshmem" = "yes" ]; then
     tools="ivshmem-client\$(EXESUF) ivshmem-server\$(EXESUF) $tools"
   fi
+  if [ "$qemudp" = "yes" ] ; then
+    tools="qemu-dp\$(EXESUF) $tools"
+  fi
 fi
 if test "$softmmu" = yes ; then
   if test "$linux" = yes; then
@@ -5781,6 +5790,7 @@ if test "$vnc" = "yes" ; then
     echo "VNC JPEG support  $vnc_jpeg"
     echo "VNC PNG support   $vnc_png"
 fi
+echo "qemu-dp support   $qemudp"
 if test -n "$sparc_cpu"; then
     echo "Target Sparc Arch $sparc_cpu"
 fi
@@ -6270,6 +6280,9 @@ if test "$virtfs" = "yes" ; then
 fi
 if test "$mpath" = "yes" ; then
   echo "CONFIG_MPATH=y" >> $config_host_mak
+fi
+if test "$qemudp" = "yes" ; then
+  echo "CONFIG_QEMUDP=y" >> $config_host_mak
 fi
 if test "$vhost_scsi" = "yes" ; then
   echo "CONFIG_VHOST_SCSI=y" >> $config_host_mak

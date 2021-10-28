@@ -26,7 +26,11 @@
 #define THROTTLE_H
 
 #include "qemu-common.h"
+#ifdef CONFIG_QEMUDP
+#include "dp-qapi/qapi-types-block-core.h"
+#else
 #include "qapi/qapi-types-block-core.h"
+#endif
 #include "qemu/timer.h"
 
 #define THROTTLE_VALUE_MAX 1000000000000000LL

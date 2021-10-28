@@ -100,11 +100,15 @@
 /qapi/qapi-visit-ui.[ch]
 /qapi/qapi-visit.[ch]
 /qapi/qapi-doc.texi
+/dp-qapi-gen-timestamp
+/dp-qapi/*.[ch]
+/dp-qapi/qapi-doc.texi
 /qemu-doc.html
 /qemu-doc.info
 /qemu-doc.txt
 /qemu-img
 /qemu-nbd
+/qemu-dp
 /qemu-options.def
 /qemu-options.texi
 /qemu-img-cmds.texi
