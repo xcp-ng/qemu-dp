@@ -7,8 +7,11 @@
 
 struct XenDevOps xen_console_ops;
 struct XenDevOps xen_kbdmouse_ops;
-struct XenDevOps xen_9pfs_ops;
 struct XenDevOps xen_usb_ops;
+
+#ifndef CONFIG_VIRTFS
+    struct XenDevOps xen_9pfs_ops;
+#endif
 
 void monitor_printf(Monitor *mon, const char *fmt, ...)
 {

@@ -121,6 +121,10 @@ int main(int argc, char **argv)
     qemu_mutex_lock_iothread();
 
     qemu_add_opts(&qemu_chardev_opts);
+
+    // Ensure all options are added in QEMU (like "fsdev" in the xen 9pfs driver).
+    module_call_init(MODULE_INIT_OPTS);
+
     qmparg = g_strdup_printf("unix:%s,server,nowait", argv[1]);
     opts = qemu_chr_parse_compat("monitor0", qmparg);
     g_free(qmparg);

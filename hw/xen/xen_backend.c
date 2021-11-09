@@ -876,8 +876,15 @@ static void xenbe_register_types(void)
 void qmp_xen_watch_device(int64_t domid, int64_t devid, const char *type, const char *blocknode, const char *devicename, Error **errp)
 {
     struct XenDevice *xendev = NULL;
+    const int is_qdisk = !strcmp(type, "qdisk");
 
-    if (strcmp(type, "qdisk")) {
+    #ifdef CONFIG_VIRTFS
+      const int is_9pfs = !is_qdisk && !strcmp(type, "9pfs");
+    #else
+      const int is_9pfs = 0;
+    #endif
+
+    if (!is_qdisk && !is_9pfs) {
         error_set(errp, ERROR_CLASS_DEVICE_NOT_FOUND,
                   "Device type '%s' not supported", type);
         return;
@@ -889,10 +896,16 @@ void qmp_xen_watch_device(int64_t domid, int64_t devid, const char *type, const 
      * Hence we check the argument matches "qdisk" above but we never use it
      * otherwise.
      */
-    xendev = xen_be_get_xendev("qdisk", domid, devid, &xen_blkdev_ops);
+    if (is_qdisk)
+      xendev = xen_be_get_xendev("qdisk", domid, devid, &xen_blkdev_ops);
+    #ifdef CONFIG_VIRTFS
+    else
+      xendev = xen_be_get_xendev("9pfs", domid, devid, &xen_9pfs_ops);
+    #endif
+
     if (xendev == NULL) {
         error_set(errp, ERROR_CLASS_DEVICE_NOT_FOUND,
-                  "Device type '%s-%ld' not found in domain %ld", "qdisk", devid, domid);
+                  "Device type '%s-%ld' not found in domain %ld", type, devid, domid);
         return;
     }
     xendev->blocknode = g_strdup(blocknode);
