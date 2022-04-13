@@ -19,6 +19,7 @@ override CFLAGS += -march=i486
 QEMU_CFLAGS := $(filter -W%, $(QEMU_CFLAGS)) $(CFLAGS_NOPIE) -ffreestanding
 QEMU_CFLAGS += $(call cc-option, $(QEMU_CFLAGS), -fno-stack-protector)
 QEMU_CFLAGS += $(call cc-option, $(QEMU_CFLAGS), -m16)
+QEMU_CFLAGS += $(call cc-option, $(QEMU_CFLAGS), -Wno-array-bounds)
 ifeq ($(filter -m16, $(QEMU_CFLAGS)),)
 # Attempt to work around compilers that lack -m16 (GCC <= 4.8, clang <= ??)
 # On GCC we add -fno-toplevel-reorder to keep the order of asm blocks with
