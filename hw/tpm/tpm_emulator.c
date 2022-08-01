@@ -31,6 +31,7 @@
 #include "qemu/module.h"
 #include "qemu/sockets.h"
 #include "io/channel-socket.h"
+#include "sysemu/runstate.h"
 #include "sysemu/tpm_backend.h"
 #include "tpm_int.h"
 #include "tpm_util.h"
@@ -387,6 +388,15 @@ err_exit:
 
 static int tpm_emulator_startup_tpm(TPMBackend *tb, size_t buffersize)
 {
+    /* TPM startup will be done from post_load hook */
+    if (runstate_check(RUN_STATE_INMIGRATE)) {
+        if (buffersize != 0) {
+            return tpm_emulator_set_buffer_size(tb, buffersize, NULL);
+        }
+
+        return 0;
+    }
+
     return tpm_emulator_startup_tpm_resume(tb, buffersize, false);
 }
 
