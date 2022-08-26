@@ -22,6 +22,7 @@
 #include "hw/qdev-properties.h"
 #include "hw/pci/pci_ids.h"
 #include "hw/acpi/tpm.h"
+#include "hw/xen/xen.h"
 #include "migration/vmstate.h"
 #include "sysemu/tpm_backend.h"
 #include "sysemu/reset.h"
@@ -305,7 +306,11 @@ static void tpm_crb_realize(DeviceState *dev, Error **errp)
                      TPM_PPI_ADDR_BASE, OBJECT(s));
     }
 
-    qemu_register_reset(tpm_crb_reset, dev);
+    if (xen_enabled()) {
+        tpm_crb_reset(dev);
+    } else {
+        qemu_register_reset(tpm_crb_reset, dev);
+    }
 }
 
 static void tpm_crb_class_init(ObjectClass *klass, void *data)
