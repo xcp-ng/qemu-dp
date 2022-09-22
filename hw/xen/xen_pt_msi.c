@@ -15,6 +15,9 @@
 #include "xen_pt.h"
 #include "hw/i386/apic-msidef.h"
 
+#ifndef XENFEAT_dm_msix_all_writes
+#define XENFEAT_dm_msix_all_writes 20
+#endif
 
 #define XEN_PT_AUTO_ASSIGN -1
 
@@ -461,15 +464,19 @@ static void pci_msix_write(void *opaque, hwaddr addr,
         entry->updated = true;
     } else if (msix->enabled && entry->updated &&
                !(val & PCI_MSIX_ENTRY_CTRL_MASKBIT)) {
-        const volatile uint32_t *vec_ctrl;
+        if (s->msix->phys_iomem_base) {
+            const volatile uint32_t *vec_ctrl;
 
-        /*
-         * If Xen intercepts the mask bit access, entry->vec_ctrl may not be
-         * up-to-date. Read from hardware directly.
-         */
-        vec_ctrl = s->msix->phys_iomem_base + entry_nr * PCI_MSIX_ENTRY_SIZE
-            + PCI_MSIX_ENTRY_VECTOR_CTRL;
-        xen_pt_msix_update_one(s, entry_nr, *vec_ctrl);
+            /*
+             * If Xen intercepts the mask bit access, entry->vec_ctrl may not be
+             * up-to-date. Read from hardware directly.
+             */
+            vec_ctrl = s->msix->phys_iomem_base + entry_nr * PCI_MSIX_ENTRY_SIZE
+                + PCI_MSIX_ENTRY_VECTOR_CTRL;
+            xen_pt_msix_update_one(s, entry_nr, *vec_ctrl);
+        } else {
+            xen_pt_msix_update_one(s, entry_nr, entry->latch(VECTOR_CTRL));
+        }
     }
 
     set_entry_value(entry, offset, val);
@@ -494,7 +501,11 @@ static uint64_t pci_msix_read(void *opaque, hwaddr addr,
         return get_entry_value(&msix->msix_entry[entry_nr], offset);
     } else {
         /* Pending Bit Array (PBA) */
-        return *(uint32_t *)(msix->phys_iomem_base + addr);
+        if (s->msix->phys_iomem_base)
+            return *(uint32_t *)(msix->phys_iomem_base + addr);
+        XEN_PT_LOG(&s->dev, "reading PBA, addr %#lx, offset %#lx\n",
+                   addr, addr - msix->total_entries * PCI_MSIX_ENTRY_SIZE);
+        return 0xFFFFFFFF;
     }
 }
 
@@ -529,8 +540,8 @@ int xen_pt_msix_init(XenPCIPassthroughState *s, uint32_t base)
     uint32_t table_off = 0;
     int i, total_entries, bar_index;
     XenHostPCIDevice *hd = &s->real_device;
+    xen_feature_info_t xc_version_info = { 0 };
     PCIDevice *d = &s->dev;
-    int fd = -1;
     XenPTMSIX *msix = NULL;
     int rc = 0;
 
@@ -543,6 +554,9 @@ int xen_pt_msix_init(XenPCIPassthroughState *s, uint32_t base)
         XEN_PT_ERR(d, "Invalid id %#x base %#x\n", id, base);
         return -1;
     }
+
+    if (xc_version(xen_xc, XENVER_get_features, &xc_version_info) < 0)
+        return -1;
 
     rc = xen_host_pci_get_word(hd, base + PCI_MSIX_FLAGS, &control);
     if (rc) {
@@ -577,33 +591,37 @@ int xen_pt_msix_init(XenPCIPassthroughState *s, uint32_t base)
     msix->table_base = s->real_device.io_regions[bar_index].base_addr;
     XEN_PT_LOG(d, "get MSI-X table BAR base 0x%"PRIx64"\n", msix->table_base);
 
-    fd = open("/dev/mem", O_RDWR);
-    if (fd == -1) {
-        rc = -errno;
-        XEN_PT_ERR(d, "Can't open /dev/mem: %s\n", strerror(errno));
-        goto error_out;
-    }
-    XEN_PT_LOG(d, "table_off = %#x, total_entries = %d\n",
-               table_off, total_entries);
-    msix->table_offset_adjust = table_off & 0x0fff;
-    msix->phys_iomem_base =
-        mmap(NULL,
-             total_entries * PCI_MSIX_ENTRY_SIZE + msix->table_offset_adjust,
-             PROT_READ,
-             MAP_SHARED | MAP_LOCKED,
-             fd,
-             msix->table_base + table_off - msix->table_offset_adjust);
-    close(fd);
-    if (msix->phys_iomem_base == MAP_FAILED) {
-        rc = -errno;
-        XEN_PT_ERR(d, "Can't map physical MSI-X table: %s\n", strerror(errno));
-        goto error_out;
-    }
-    msix->phys_iomem_base = (char *)msix->phys_iomem_base
-        + msix->table_offset_adjust;
+    if (!(xc_version_info.submap & (1U << XENFEAT_dm_msix_all_writes))) {
+        int fd = -1;
 
-    XEN_PT_LOG(d, "mapping physical MSI-X table to %p\n",
-               msix->phys_iomem_base);
+        fd = open("/dev/mem", O_RDWR);
+        if (fd == -1) {
+            rc = -errno;
+            XEN_PT_ERR(d, "Can't open /dev/mem: %s\n", strerror(errno));
+            goto error_out;
+        }
+        XEN_PT_LOG(d, "table_off = %#x, total_entries = %d\n",
+                   table_off, total_entries);
+        msix->table_offset_adjust = table_off & 0x0fff;
+        msix->phys_iomem_base =
+            mmap(NULL,
+                 total_entries * PCI_MSIX_ENTRY_SIZE + msix->table_offset_adjust,
+                 PROT_READ,
+                 MAP_SHARED | MAP_LOCKED,
+                 fd,
+                 msix->table_base + table_off - msix->table_offset_adjust);
+        close(fd);
+        if (msix->phys_iomem_base == MAP_FAILED) {
+            rc = -errno;
+            XEN_PT_ERR(d, "Can't map physical MSI-X table: %s\n", strerror(errno));
+            goto error_out;
+        }
+        msix->phys_iomem_base = (char *)msix->phys_iomem_base
+            + msix->table_offset_adjust;
+
+        XEN_PT_LOG(d, "mapping physical MSI-X table to %p\n",
+                   msix->phys_iomem_base);
+    }
 
     memory_region_add_subregion_overlap(&s->bar[bar_index], table_off,
                                         &msix->mmio,
