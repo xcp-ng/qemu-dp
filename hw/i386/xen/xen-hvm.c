@@ -1084,11 +1084,11 @@ static void handle_ioreq(XenIOState *state, ioreq_t *req)
     }
 }
 
-static bool handle_buffered_iopage(XenIOState *state)
+static unsigned int handle_buffered_iopage(XenIOState *state)
 {
     buffered_iopage_t *buf_page = state->buffered_io_page;
     buf_ioreq_t *buf_req = NULL;
-    bool handled_ioreq = false;
+    unsigned int handled = 0;
     ioreq_t req;
     int qw;
 
@@ -1101,7 +1101,7 @@ static bool handle_buffered_iopage(XenIOState *state)
     req.count = 1;
     req.dir = IOREQ_WRITE;
 
-    for (;;) {
+    do {
         uint32_t rdptr = buf_page->read_pointer, wrptr;
 
         xen_rmb();
@@ -1142,22 +1142,30 @@ static bool handle_buffered_iopage(XenIOState *state)
         assert(!req.data_is_ptr);
 
         atomic_add(&buf_page->read_pointer, qw + 1);
-        handled_ioreq = true;
-    }
+        handled += qw + 1;
+    } while (handled < IOREQ_BUFFER_SLOT_NUM);
 
-    return handled_ioreq;
+    return handled;
 }
 
 static void handle_buffered_io(void *opaque)
 {
     XenIOState *state = opaque;
+    unsigned int handled;
 
-    if (handle_buffered_iopage(state)) {
+    handled = handle_buffered_iopage(state);
+    if (handled >= IOREQ_BUFFER_SLOT_NUM) {
+        /* We handled a full ring of ioreqs. Schedule a timer to continue
+         * processing while giving other stuff a chance to run.
+         */
         timer_mod(state->buffered_io_timer,
-                BUFFER_IO_MAX_DELAY + qemu_clock_get_ms(QEMU_CLOCK_REALTIME));
-    } else {
+                qemu_clock_get_ms(QEMU_CLOCK_REALTIME));
+    } else if (handled == 0) {
         timer_del(state->buffered_io_timer);
         xenevtchn_unmask(state->xce_handle, state->bufioreq_local_port);
+    } else {
+        timer_mod(state->buffered_io_timer,
+                BUFFER_IO_MAX_DELAY + qemu_clock_get_ms(QEMU_CLOCK_REALTIME));
     }
 }
 
