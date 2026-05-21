@@ -51,7 +51,7 @@
 #include "qapi/qapi-commands-pci.h"
 #include "qemu/cutils.h"
 
-//#define DEBUG_PCI
+#define DEBUG_PCI
 #ifdef DEBUG_PCI
 # define PCI_DPRINTF(format, ...)       printf(format, ## __VA_ARGS__)
 #else
@@ -2334,11 +2334,18 @@ static void pci_add_option_rom(PCIDevice *pdev, bool is_default_rom,
     void *ptr;
     char name[32];
     const VMStateDescription *vmsd;
+    int devid = pci_get_word(pdev->config + PCI_DEVICE_ID);
 
-    if (!pdev->romfile)
+    PCI_DPRINTF("%s: device id: %04x\n", __func__, devid);
+
+    if (!pdev->romfile) {
+	PCI_DPRINTF("%s: [dev id %04x] no romfile, returning\n", __func__, devid);
         return;
-    if (strlen(pdev->romfile) == 0)
+    }
+    if (strlen(pdev->romfile) == 0) {
+	PCI_DPRINTF("%s: romfile length of 0, returning\n", __func__);
         return;
+    }
 
     if (!pdev->rom_bar) {
         /*
@@ -2352,14 +2359,17 @@ static void pci_add_option_rom(PCIDevice *pdev, bool is_default_rom,
          * if the rom bar is disabled.
          */
         if (DEVICE(pdev)->hotplugged) {
+	    PCI_DPRINTF("%s: hotplugged, returning\n", __func__);
             error_setg(errp, "Hot-plugged device without ROM bar"
                        " can't have an option ROM");
             return;
         }
 
         if (class == 0x0300) {
+	    PCI_DPRINTF("%s: calling rom_add_vga()\n", __func__);
             rom_add_vga(pdev->romfile);
         } else {
+	    PCI_DPRINTF("%s: calling rom_add_option()\n", __func__);
             rom_add_option(pdev->romfile, -1);
         }
         return;
@@ -2411,6 +2421,7 @@ static void pci_add_option_rom(PCIDevice *pdev, bool is_default_rom,
         g_free(path);
         return;
     }
+    PCI_DPRINTF("%s: start of ROM: %04x\n", __func__, *(uint16_t *)ptr);
     g_free(path);
 
     if (is_default_rom) {
@@ -2418,6 +2429,7 @@ static void pci_add_option_rom(PCIDevice *pdev, bool is_default_rom,
         pci_patch_ids(pdev, ptr, size);
     }
 
+    PCI_DPRINTF("%s: calling pci_register_bar()\n", __func__);
     pci_register_bar(pdev, PCI_ROM_SLOT, 0, &pdev->rom);
 }
 
