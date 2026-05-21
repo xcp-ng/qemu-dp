@@ -2111,6 +2111,20 @@ static void pci_qdev_realize(DeviceState *qdev, Error **errp)
     if (pci_dev == NULL)
         return;
 
+    /* rom loading */
+    is_default_rom = false;
+    if (pci_dev->romfile == NULL && pc->romfile != NULL) {
+        pci_dev->romfile = g_strdup(pc->romfile);
+        is_default_rom = true;
+    }
+
+    pci_add_option_rom(pci_dev, is_default_rom, &local_err);
+    if (local_err) {
+        error_propagate(errp, local_err);
+        pci_qdev_unrealize(DEVICE(pci_dev), NULL);
+        return;
+    }
+
     if (pc->realize) {
         pc->realize(pci_dev, &local_err);
         if (local_err) {
@@ -2149,19 +2163,6 @@ static void pci_qdev_realize(DeviceState *qdev, Error **errp)
         qdev->allow_unplug_during_migration = true;
     }
 
-    /* rom loading */
-    is_default_rom = false;
-    if (pci_dev->romfile == NULL && pc->romfile != NULL) {
-        pci_dev->romfile = g_strdup(pc->romfile);
-        is_default_rom = true;
-    }
-
-    pci_add_option_rom(pci_dev, is_default_rom, &local_err);
-    if (local_err) {
-        error_propagate(errp, local_err);
-        pci_qdev_unrealize(DEVICE(pci_dev), NULL);
-        return;
-    }
 }
 
 PCIDevice *pci_create_multifunction(PCIBus *bus, int devfn, bool multifunction,
