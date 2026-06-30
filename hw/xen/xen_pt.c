@@ -52,6 +52,9 @@
  *         - Set entry->pirq to '-1'.
  */
 
+#define XEN_PT_LOGGING_ENABLED
+#define XEN_PT_DEBUG_PCI_CONFIG_ACCESS
+
 #include "qemu/osdep.h"
 #include "qapi/error.h"
 #include <sys/ioctl.h>
