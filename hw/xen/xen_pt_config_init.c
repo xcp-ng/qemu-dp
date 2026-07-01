@@ -562,7 +562,10 @@ static int xen_pt_exp_rom_bar_reg_write(XenPCIPassthroughState *s,
 
     /* modify emulate register */
     writable_mask = ~bar_ro_mask & valid_mask;
+
+    XEN_PT_LOG(&s->dev, "ROM BAR before merge value: %04x\n", *data);
     *data = XEN_PT_MERGE_VALUE(*val, *data, writable_mask);
+    XEN_PT_LOG(&s->dev, "ROM BAR after merge value: %04x\n", *data);
 
     /* create value for writing to I/O device register */
     *val = XEN_PT_MERGE_VALUE(*val, dev_value, throughable_mask);
