@@ -1447,14 +1447,24 @@ void pci_default_write_config(PCIDevice *d, uint32_t addr, uint32_t val_in, int 
     uint32_t val = val_in;
 
     assert(addr + l <= pci_config_size(d));
-
+    if (addr == PCI_ROM_ADDRESS)
+	    PCI_DPRINTF("%s: l == %d\n", __func__, l);
+ 
     for (i = 0; i < l; val >>= 8, ++i) {
         uint8_t wmask = d->wmask[addr + i];
         uint8_t w1cmask = d->w1cmask[addr + i];
         assert(!(wmask & w1cmask));
+	if (addr == PCI_ROM_ADDRESS)
+		PCI_DPRINTF("%s: val: %08x wmask[%02x]: %02x w1cmask[%02x]: %02x\n", __func__, val, addr + i, d->wmask[addr + i], addr + i, d->w1cmask[addr + i]);
         d->config[addr + i] = (d->config[addr + i] & ~wmask) | (val & wmask);
         d->config[addr + i] &= ~(val & w1cmask); /* W1C: Write 1 to Clear */
     }
+
+    if (addr == PCI_ROM_ADDRESS) {
+    	PCI_DPRINTF("%s: written to emulated PCI device d->config[0x30]: %04x\n", __func__, *(uint32_t *)&(d->config[addr]));
+    }
+
+
     if (ranges_overlap(addr, l, PCI_BASE_ADDRESS_0, 24) ||
         ranges_overlap(addr, l, PCI_ROM_ADDRESS, 4) ||
         ranges_overlap(addr, l, PCI_ROM_ADDRESS1, 4) ||
