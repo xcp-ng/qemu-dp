@@ -824,6 +824,8 @@ static void xen_pt_realize(PCIDevice *d, Error **errp)
         /* Register ISA bridge for passthrough GFX. */
         xen_igd_passthrough_isa_bridge_create(s, &s->real_device);
     }
+    if (((s->real_device.class_code >> 8) == PCI_CLASS_DISPLAY_VGA) && s->dev.has_rom)
+        cpu_physical_memory_rw(0xc0000, memory_region_get_ram_ptr(&s->dev.rom), s->dev.rom.size, 1);
 
     /* Handle real device's MMIO/PIO BARs */
     xen_pt_register_regions(s, &cmd);
